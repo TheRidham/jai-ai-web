@@ -1,0 +1,39 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow authenticated users to read and write their own advisor document
+    match /advisors/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Allow authenticated advisors to read and manage chat requests assigned to them
+    match /chatRequests/{requestId} {
+      allow read, write: if request.auth != null && 
+        (resource.data.advisorId == request.auth.uid || 
+         request.data.advisorId == request.auth.uid);
+    }
+    
+    // Allow authenticated advisors to read and write chat rooms they're part of
+    match /chatRooms/{roomId} {
+      allow read, write: if request.auth != null && 
+        (resource.data.advisorId == request.auth.uid || 
+         request.data.userId == request.auth.uid);
+      
+      // Allow reading and writing messages in chat rooms the user is part of
+      match /messages/{messageId} {
+        allow read, write: if request.auth != null;
+      }
+    }
+    
+    // Allow reading user data for advisors (needed for customer info)
+    match /users/{userId} {
+      allow read: if request.auth != null;
+    }
+    
+    // Allow reading payment sessions for verification
+    match /paymentSessions/{sessionId} {
+      allow read: if request.auth != null;
+    }
+  }
+}
