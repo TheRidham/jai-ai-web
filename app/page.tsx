@@ -15,7 +15,7 @@ export default function Home() {
         // User is authenticated, redirect to advisor dashboard
         router.push('/advisor');
       } else {
-        // User is not authenticated, redirect to login
+        // User is not authenticated, redirect to signin
         router.push('/signin');
       }
       setLoading(false);

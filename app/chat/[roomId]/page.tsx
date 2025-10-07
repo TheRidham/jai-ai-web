@@ -63,7 +63,7 @@ export default function ChatPage() {
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       setUser(user);
       if (!user) {
-        router.push('/login');
+        router.push('/signin');
       }
     });
 

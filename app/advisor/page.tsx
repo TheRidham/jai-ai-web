@@ -53,8 +53,8 @@ export default function AdvisorDashboard() {
       if (user) {
         setUser(user);
       } else {
-        // Redirect to login if not authenticated
-        router.push('/login');
+        // Redirect to signin if not authenticated
+        router.push('/signin');
       }
     });
 
@@ -187,7 +187,7 @@ export default function AdvisorDashboard() {
   const handleSignOut = async () => {
     try {
       await signOut(auth);
-      router.push('/login');
+      router.push('/signin');
     } catch (error) {
       console.error('Error signing out:', error);
     }

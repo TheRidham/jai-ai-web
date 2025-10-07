@@ -44,7 +44,7 @@ A comprehensive web-based dashboard for advisors to manage chat requests, handle
 
 5. **Access the application**:
    - Open [http://localhost:3000](http://localhost:3000)
-   - You'll be redirected to sign up/login
+   - You'll be redirected to sign up/signin
 
 ## 🔐 Authentication Flow
 
@@ -55,9 +55,9 @@ A comprehensive web-based dashboard for advisors to manage chat requests, handle
 4. Automatically redirected to dashboard
 
 ### For Existing Advisors:
-1. Visit `/login` with email and password
+1. Visit `/signin` with email and password
 2. Authenticated users are redirected to `/advisor` dashboard
-3. Non-authenticated users are redirected to `/login`
+3. Non-authenticated users are redirected to `/signin`
 
 ## 🎛️ Dashboard Features
 
@@ -80,7 +80,7 @@ A comprehensive web-based dashboard for advisors to manage chat requests, handle
 jaiai-web/
 ├── app/
 │   ├── page.tsx                    # Home (auth redirect)
-│   ├── login/page.tsx             # Advisor login
+│   ├── signin/page.tsx             # Advisor signin
 │   ├── signup/page.tsx            # Advisor registration
 │   ├── advisor/page.tsx           # Main dashboard
 │   └── chat/[roomId]/page.tsx     # Chat interface
