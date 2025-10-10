@@ -4,7 +4,7 @@ import { auth, setupRecaptcha } from '@/lib/firebase';
 import { signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 export default function SigninPage() {
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
@@ -14,17 +14,6 @@ export default function SigninPage() {
   const [error, setError] = useState('');
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const router = useRouter();
-
-  useEffect(() => {
-    if (step === 'phone') {
-      try {
-        setupRecaptcha('recaptcha-container');
-      } catch (error) {
-        console.error('Error setting up recaptcha:', error);
-        setError('Failed to initialize verification. Please refresh the page.');
-      }
-    }
-  }, [step]);
 
   const formatPhoneNumber = (phone: string) => {
     const cleaned = phone.replace(/\D/g, '');
@@ -43,9 +32,10 @@ export default function SigninPage() {
 
     try {
       const formattedPhone = formatPhoneNumber(phoneNumber);
-      const recaptchaVerifier = setupRecaptcha('recaptcha-container');
+
+      const recaptchaVerifier = setupRecaptcha('recaptcha-container'); // ✅ only here
       const confirmation = await signInWithPhoneNumber(auth, formattedPhone, recaptchaVerifier);
-      
+
       setConfirmationResult(confirmation);
       setStep('otp');
     } catch (err: unknown) {
@@ -55,6 +45,7 @@ export default function SigninPage() {
       setLoading(false);
     }
   };
+
 
   const verifyOTP = async (e: React.FormEvent) => {
     e.preventDefault();

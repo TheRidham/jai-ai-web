@@ -54,7 +54,7 @@ export default function TermsOfService() {
           <p>You agree not to:</p>
           <ul className="list-disc list-inside text-gray-700">
             <li>Use the Services for unlawful or abusive purposes</li>
-            <li>Post content that is illegal, defamatory, or infringes others’ rights</li>
+            <li>Post content that is illegal, defamatory, or infringes others&apos; rights</li>
             <li>Reverse-engineer or extract source code</li>
             <li>Use bots or automated systems without permission</li>
             <li>Attempt unauthorized access to our systems</li>
@@ -97,7 +97,7 @@ export default function TermsOfService() {
 
           <h2 className="text-xl font-semibold ">11. Disclaimers</h2>
           <ul className="list-disc list-inside text-gray-700">
-            <li>The app is provided "as-is" and "as-available"</li>
+            <li>The app is provided &quot;as-is&quot; and &quot;as-available&quot;</li>
             <li>No guarantees of accuracy, uptime, or security</li>
             <li>You use the app at your own risk</li>
           </ul>
