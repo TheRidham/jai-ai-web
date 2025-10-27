@@ -56,6 +56,7 @@ export default function SignupPage() {
     } catch (err: unknown) {
       const error = err as { message?: string };
       setError(error.message || 'Failed to send OTP');
+      console.log(error)
     } finally {
       setLoading(false);
     }
