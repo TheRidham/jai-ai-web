@@ -21,7 +21,7 @@ export default function TermsOfService() {
           <p>By using the JAI App, you agree to these Terms and our <a href="/privacy-policy" className=" underline">Privacy Policy</a> (“Agreement”). If you do not agree, please discontinue using the app immediately.</p>
 
           <h2 className="text-xl font-semibold ">1. About JAI App</h2>
-          <p>JAI App is an AI + Human Advisory platform offering intelligent guidance through AI systems and human experts. All advice is informational only and not a substitute for professional medical, legal, or financial advice.</p>
+          <p>JAI App is an AI + Human Advisory platform offering intelligent guidance through AI systems and human advisors. All advice is informational only and not a substitute for professional medical, legal, or financial advice.</p>
 
           <h2 className="text-xl font-semibold ">2. Eligibility</h2>
           <ul className="list-disc list-inside text-gray-700">

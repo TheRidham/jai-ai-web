@@ -3,14 +3,16 @@
 import { auth, db, functions } from '@/lib/firebase';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import {
-    collection,
-    doc,
-    getDoc,
-    onSnapshot,
-    query,
-    updateDoc,
-    where,
-    writeBatch
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  onSnapshot,
+  query,
+  updateDoc,
+  where,
+  writeBatch,
+  documentId
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useRouter } from 'next/navigation';
@@ -31,19 +33,32 @@ interface ChatRequest {
     method?: 'wallet' | 'razorpay';
     walletTransactionId?: string;
   };
+  // optional: attached user details for display in the dashboard
+  user?: {
+    name?: string;
+    phone?: string;
+    phoneNumber?: string;
+    email?: string;
+  } | null;
 }
 
 interface Advisor {
   id: string;
   name: string;
   email: string;
+  phone: string;
+  specialization: string[];
+  certification: string;
+  experience: string;
   busy: boolean;
   busySince?: unknown;
+  totalUsersAttended: number;
+  isActive?: boolean;
 }
 
 export default function AdvisorDashboard() {
   const [user, setUser] = useState<User | null>(null);
-  const [advisor, setAdvisor] = useState<Advisor | null>(null);
+  const [expert, setExpert] = useState<Advisor | null>(null);
   const [chatRequests, setChatRequests] = useState<ChatRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -53,8 +68,8 @@ export default function AdvisorDashboard() {
       if (user) {
         setUser(user);
       } else {
-        // Redirect to signin if not authenticated
-        router.push('/signin');
+        // Redirect to login if not authenticated
+        router.push('/login');
       }
     });
 
@@ -63,47 +78,111 @@ export default function AdvisorDashboard() {
 
   useEffect(() => {
     if (user) {
-      // Use the authenticated user's UID as advisor ID
-      const advisorId = user.uid;
+      // Find advisor document by UID
+      const expertQuery = query(
+        collection(db, 'advisors'),
+        where('uid', '==', user.uid)
+      );
       
-      // Listen to advisor data
-      const unsubscribeAdvisor = onSnapshot(doc(db, 'advisors', advisorId), (doc) => {
-        if (doc.exists()) {
-          setAdvisor({ id: doc.id, ...doc.data() } as Advisor);
+      // Listen to advisor data and chat requests for that advisor (use advisor doc ID)
+      let unsubscribeChatRequests: (() => void) | null = null;
+      const unsubscribeExpert = onSnapshot(expertQuery, (snapshot) => {
+        if (!snapshot.empty) {
+          const expertDoc = snapshot.docs[0];
+          const adv = { id: expertDoc.id, ...expertDoc.data() } as Advisor;
+          setExpert(adv);
+
+          // If we had a previous listener for chatRequests, detach it first
+          if (unsubscribeChatRequests) {
+            try { unsubscribeChatRequests(); } catch (e) { /* ignore */ }
+            unsubscribeChatRequests = null;
+          }
+
+          // Listen for ACTIVE chat requests addressed to this advisor (advisor doc id)
+          const chatReqQuery = query(
+            collection(db, 'chatRequests'),
+            where('advisorId', '==', adv.id),
+            where('status', '==', 'active')
+          );
+
+          unsubscribeChatRequests = onSnapshot(chatReqQuery, (snap) => {
+            (async () => {
+              const requests: ChatRequest[] = [];
+              snap.forEach((d) => requests.push({ id: d.id, ...d.data() } as ChatRequest));
+
+              // Fetch user docs for each unique userId referenced in requests
+              try {
+                const userIds = Array.from(new Set(requests.map((r) => r.userId).filter(Boolean)));
+                const usersMap: Record<string, any> = {};
+
+                if (userIds.length > 0) {
+                  // Use a single query when number of ids is within Firestore 'in' limits
+                  if (userIds.length <= 10) {
+                    try {
+                      const usersQuery = query(collection(db, 'users'), where(documentId(), 'in', userIds));
+                      const usersSnap = await getDocs(usersQuery);
+                      usersSnap.forEach((u) => {
+                        usersMap[u.id] = u.data();
+                      });
+                    } catch (qErr) {
+                      console.error('Failed users query, falling back to per-doc fetch', qErr);
+                      await Promise.all(
+                        userIds.map(async (uid) => {
+                          try {
+                            const uDoc = await getDoc(doc(db, 'users', uid));
+                            if (uDoc.exists()) usersMap[uid] = uDoc.data();
+                          } catch (e) {
+                            console.error('Failed to fetch user', uid, e);
+                          }
+                        })
+                      );
+                    }
+                  } else {
+                    // Too many ids for an 'in' query — fetch in parallel
+                    await Promise.all(
+                      userIds.map(async (uid) => {
+                        try {
+                          const uDoc = await getDoc(doc(db, 'users', uid));
+                          if (uDoc.exists()) usersMap[uid] = uDoc.data();
+                        } catch (e) {
+                          console.error('Failed to fetch user', uid, e);
+                        }
+                      })
+                    );
+                  }
+                }
+
+                const augmented = requests.map((r) => ({
+                  ...r,
+                  user: usersMap[r.userId] || null,
+                }));
+
+                setChatRequests(augmented);
+              } catch (e) {
+                console.error('Error attaching user details to chat requests', e);
+                setChatRequests(requests);
+              }
+            })();
+          });
         }
         setLoading(false);
       });
 
-      // Listen to chat requests for this advisor (both active and accepted)
-      const unsubscribeChatRequests = onSnapshot(
-        query(
-          collection(db, 'chatRequests'),
-          where('advisorId', '==', advisorId),
-          where('status', 'in', ['active', 'accepted'])
-        ),
-        (snapshot) => {
-          const requests: ChatRequest[] = [];
-          snapshot.forEach((doc) => {
-            requests.push({ id: doc.id, ...doc.data() } as ChatRequest);
-          });
-          setChatRequests(requests);
-        }
-      );
-
       return () => {
-        unsubscribeAdvisor();
-        unsubscribeChatRequests();
+        unsubscribeExpert();
+        if (unsubscribeChatRequests) try { unsubscribeChatRequests(); } catch (e) { /* ignore */ }
       };
     }
   }, [user]);
 
   const toggleAvailability = async () => {
-    if (!advisor || !user) return;
+    if (!expert || !user) return;
 
     try {
-      await updateDoc(doc(db, 'advisors', user.uid), {
-        busy: !advisor.busy,
-        busySince: advisor.busy ? null : new Date(),
+      // Update in advisors collection using document ID
+      await updateDoc(doc(db, 'advisors', expert.id), {
+        busy: !expert.busy,
+        busySince: expert.busy ? null : new Date(),
       });
     } catch (error) {
       console.error('Error updating availability:', error);
@@ -117,7 +196,7 @@ export default function AdvisorDashboard() {
     try {
       const batch = writeBatch(db);
       
-      // Get the chat request to find the userId
+  // Get the chat request to find the userId
       const chatRequestDoc = await getDoc(doc(db, 'chatRequests', requestId));
       if (!chatRequestDoc.exists()) {
         alert('Chat request not found');
@@ -140,12 +219,6 @@ export default function AdvisorDashboard() {
         acceptedAt: new Date(),
       });
 
-      // Update advisor to busy
-      // batch.update(doc(db, 'advisors', user.uid), {
-      //   busy: true,
-      //   busySince: new Date(),
-      // });
-
       await batch.commit();
       
       // Redirect to chat interface
@@ -162,7 +235,7 @@ export default function AdvisorDashboard() {
   };
 
   const endSession = async (requestId: string) => {
-    if (!user) return;
+    if (!user || !expert) return;
     
     try {
       // Get the chat request to find the room ID
@@ -173,11 +246,30 @@ export default function AdvisorDashboard() {
       }
       
       const chatRequestData = chatRequestDoc.data();
-      const endChatFunction = httpsCallable(functions, 'endChat');
-      await endChatFunction({
-        roomId: chatRequestData.roomId,
-        chatRequestId: requestId
+      
+      // Update chat request to closed
+      await updateDoc(doc(db, 'chatRequests', requestId), {
+        status: 'closed',
+        closedAt: new Date(),
       });
+
+      // Increment expert's user count
+      await updateDoc(doc(db, 'advisors', expert.id), {
+        totalUsersAttended: (expert.totalUsersAttended || 0) + 1,
+        busy: false, // Set expert as available after ending session
+      });
+
+      // Optional: Call cloud function if exists
+      try {
+        const endChatFunction = httpsCallable(functions, 'endChat');
+        await endChatFunction({
+          roomId: chatRequestData.roomId,
+          chatRequestId: requestId
+        });
+      } catch (fnError) {
+        console.log('Cloud function not available, but session ended successfully', fnError);
+      }
+      
     } catch (error) {
       console.error('Error ending session:', error);
       alert('Failed to end session');
@@ -187,7 +279,7 @@ export default function AdvisorDashboard() {
   const handleSignOut = async () => {
     try {
       await signOut(auth);
-      router.push('/signin');
+      router.push('/login');
     } catch (error) {
       console.error('Error signing out:', error);
     }
@@ -215,15 +307,21 @@ export default function AdvisorDashboard() {
     );
   }
 
-  if (!advisor) {
+  if (!expert) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="bg-white p-8 rounded-lg shadow-md">
           <h1 className="text-2xl font-bold text-red-600 mb-4">Advisor Profile Not Found</h1>
           <p className="text-gray-600 mb-4">
-            No advisor profile found for your account. Please contact support.
+            No advisor profile found for your account. Please sign up first.
           </p>
           <div className="space-x-4">
+            <button
+              onClick={() => router.push('/signup')}
+              className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
+            >
+              Sign Up
+            </button>
             <button
               onClick={handleSignOut}
               className="bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700"
@@ -237,37 +335,51 @@ export default function AdvisorDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto p-6">
+    <div className="flex-1 bg-gray-50">
+      <div className="max-w-6xl mx-auto px-6">
         {/* Header */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
           <div className="flex items-center justify-between">
-            <div>
+            <div className="flex-1">
               <h1 className="text-3xl font-bold text-gray-800">Advisor Dashboard</h1>
-              <p className="text-gray-600">Welcome, {advisor.name}</p>
+              <p className="text-gray-600">Welcome, {expert.name}</p>
+              <p className="text-sm text-gray-500 mb-2">
+                {Array.isArray(expert.specialization) ? expert.specialization.join(', ') : expert.specialization}
+              </p>
+              <div className="flex items-center gap-4 text-xs text-gray-600">
+                <span className="bg-blue-100 px-2 py-1 rounded-full">
+                  {expert.experience} years experience
+                </span>
+                <span className="bg-green-100 px-2 py-1 rounded-full">
+                  {expert.certification}
+                </span>
+                <span className="bg-purple-100 px-2 py-1 rounded-full">
+                  {expert.totalUsersAttended || 0} users helped
+                </span>
+              </div>
             </div>
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <div 
                   className={`w-3 h-3 rounded-full ${
-                    advisor.busy ? 'bg-red-500' : 'bg-green-500'
+                    expert.busy ? 'bg-red-500' : 'bg-green-500'
                   }`}
                 ></div>
                 <span className={`font-medium ${
-                  advisor.busy ? 'text-red-600' : 'text-green-600'
+                  expert.busy ? 'text-red-600' : 'text-green-600'
                 }`}>
-                  {advisor.busy ? 'Busy' : 'Available'}
+                  {expert.busy ? 'Busy' : 'Available'}
                 </span>
               </div>
               <button
                 onClick={toggleAvailability}
                 className={`px-4 py-2 rounded-md font-medium ${
-                  advisor.busy
+                  expert.busy
                     ? 'bg-green-600 text-white hover:bg-green-700'
                     : 'bg-red-600 text-white hover:bg-red-700'
                 }`}
               >
-                {advisor.busy ? 'Go Available' : 'Go Busy'}
+                {expert.busy ? 'Go Available' : 'Go Busy'}
               </button>
               <button
                 onClick={handleSignOut}
@@ -286,8 +398,7 @@ export default function AdvisorDashboard() {
               Chat Requests ({chatRequests.length})
             </h2>
             <p className="text-sm text-gray-600 mt-1">
-              {chatRequests.filter(r => r.status === 'active').length} new requests, {' '}
-              {chatRequests.filter(r => r.status === 'accepted').length} in progress
+              {chatRequests.length} new request{chatRequests.length !== 1 ? 's' : ''}
             </p>
           </div>
           <div className="p-6">
@@ -309,48 +420,46 @@ export default function AdvisorDashboard() {
                         <div className="flex items-center space-x-4">
                           <div className="bg-blue-100 w-12 h-12 rounded-full flex items-center justify-center">
                             <span className="text-blue-600 font-semibold text-lg">
-                              {request.userId.slice(0, 2).toUpperCase()}
+                              {request.user?.name
+                                ? String(request.user.name)
+                                    .split(' ')
+                                    .map((p) => (p && p[0] ? p[0] : ''))
+                                    .slice(0, 2)
+                                    .join('')
+                                    .toUpperCase()
+                                : '?'}
                             </span>
                           </div>
                           <div>
                             <div className="flex items-center space-x-2">
                               <p className="font-medium text-gray-800">
-                                User: {request.userId.slice(0, 8)}...
+                                {request.user?.name ? `User: ${request.user.name}` : `User: Unknown`}
                               </p>
                               <span className={`px-2 py-1 text-xs rounded-full font-medium ${
-                                request.status === 'active' 
-                                  ? 'bg-yellow-100 text-yellow-800'
-                                  : 'bg-green-100 text-green-800'
-                              }`}>
-                                {request.status === 'active' ? 'New Request' : 'In Progress'}
-                              </span>
+                                  request.status === 'active' 
+                                    ? 'bg-yellow-100 text-yellow-800'
+                                    : 'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {request.status === 'active' ? 'New Request' : request.status}
+                                </span>
                             </div>
-                            <p className="text-sm text-gray-600">
-                              Request ID: {request.id.slice(0, 8)}...
-                            </p>
+                            <p className="text-sm text-gray-600">Room ID: {request.roomId}</p>
                             <p className="text-sm text-gray-500">
                               Payment: {request.payment?.paymentId ? request.payment.paymentId.slice(0, 10) + '...' : 
                                        request.paymentMethod === 'wallet' ? 'Paid via Wallet' : 'Payment Info'}
                             </p>
+                            <p className="text-sm text-gray-600">Phone: {request.user?.phone || request.user?.phoneNumber || '—'}</p>
+                            <p className="text-sm text-gray-500">Email: {request.user?.email || '—'}</p>
                           </div>
                         </div>
                       </div>
                       <div className="flex space-x-2">
-                        {request.status === 'active' ? (
-                          <button
-                            onClick={() => acceptChatRequest(request.id, request.roomId)}
-                            className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 font-medium"
-                          >
-                            Accept & Chat
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => joinChat(request.roomId)}
-                            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 font-medium"
-                          >
-                            Join Chat
-                          </button>
-                        )}
+                        <button
+                          onClick={() => joinChat(request.roomId)}
+                          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 font-medium"
+                        >
+                          Join Chat
+                        </button>
                         <button
                           onClick={() => endSession(request.id)}
                           className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 font-medium"

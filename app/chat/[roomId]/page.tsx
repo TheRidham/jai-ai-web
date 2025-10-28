@@ -3,14 +3,15 @@
 import { auth, db, functions } from '@/lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import {
-    addDoc,
-    collection,
-    doc,
-    onSnapshot,
-    orderBy,
-    query,
-    serverTimestamp,
-    where
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  where
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useParams, useRouter } from 'next/navigation';
@@ -58,6 +59,7 @@ export default function ChatPage() {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [chatRequest, setChatRequest] = useState<ChatRequest | null>(null);
+  const [chatUser, setChatUser] = useState<{ name?: string; phone?: string; email?: string } | null>(null);
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
@@ -116,10 +118,32 @@ export default function ChatPage() {
         }
       );
 
+      // Fetch the requesting user's profile once we know the chat room's userId
+      // We'll watch chatRoom via onSnapshot above and fetch here when available
+      const fetchChatUser = async (uid?: string) => {
+        if (!uid) return setChatUser(null);
+        try {
+          const uDoc = await getDoc(doc(db, 'users', uid));
+          if (uDoc.exists()) setChatUser(uDoc.data() as any);
+          else setChatUser(null);
+        } catch (e) {
+          console.error('Failed to fetch chat user profile', e);
+          setChatUser(null);
+        }
+      };
+
+      // Also set up a small watcher: when chatRoom snapshot updates, fetch the user
+      const unsubRoomWatcher = onSnapshot(doc(db, 'chatRooms', roomId), (r) => {
+        if (r.exists()) {
+          const data = r.data() as any;
+          fetchChatUser(data.userId as string | undefined);
+        }
+      }, (err) => console.error('room watcher error', err));
       return () => {
         unsubscribeChatRoom();
         unsubscribeMessages();
         unsubscribeChatRequest();
+        unsubRoomWatcher();
       };
     }
   }, [roomId, user]);
@@ -157,7 +181,7 @@ export default function ChatPage() {
       });
       
       // Redirect back to advisor dashboard
-      router.push('/advisor');
+      router.push('/dashboard');
     } catch (error) {
       console.error('Error ending session:', error);
       alert('Failed to end session');
@@ -182,7 +206,7 @@ export default function ChatPage() {
           <h1 className="text-2xl font-bold text-red-600 mb-4">Chat Room Not Found</h1>
           <p className="text-gray-600 mb-4">Room ID: {roomId}</p>
           <button
-            onClick={() => router.push('/advisor')}
+            onClick={() => router.push('/dashboard')}
             className="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700"
           >
             Back to Dashboard
@@ -198,16 +222,16 @@ export default function ChatPage() {
         {/* Header */}
         <div className="bg-white border-b p-4 flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-gray-800">
-              Chat with User
-            </h1>
-            <p className="text-sm text-gray-600">
-              User ID: {chatRoom.userId.slice(0, 8)}...
-            </p>
-          </div>
+              <h1 className="text-xl font-semibold text-gray-800">
+                Chat with {chatUser?.name || 'User'}
+              </h1>
+              <p className="text-sm text-gray-600">
+                {chatUser?.name ? `(${chatUser.name})` : `User ID: ${chatRoom.userId.slice(0, 8)}...`}
+              </p>
+            </div>
           <div className="flex space-x-2">
             <button
-              onClick={() => router.push('/advisor')}
+              onClick={() => router.push('/dashboard')}
               className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700"
             >
               Back to Dashboard

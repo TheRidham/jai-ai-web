@@ -27,15 +27,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <div className="flex flex-col min-h-screen">
-          <header className="bg-white shadow z-50">
-            <div className="px-4 py-4 text-center">
-              <h1 className="text-3xl font-bold">Jai Ai Web</h1>
-            </div>
-          </header>
-          <main className="flex-1 py-4 bg-white">{children}</main>
-          <Footer />
-        </div>
+        <main className="h-screen flex flex-col flex-1 py-2 bg-white">{children}</main>
       </body>
     </html>
   );

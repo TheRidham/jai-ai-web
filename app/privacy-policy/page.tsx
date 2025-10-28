@@ -52,7 +52,7 @@ export default function PrivacyPolicy() {
 
           <h2 className="text-xl font-semibold ">3. AI and Human Advisory Transparency</h2>
           <p>
-            We use a blend of AI and verified human experts. AI responses may use licensed LLM providers.
+            We use a blend of AI and verified human advisors. AI responses may use licensed LLM providers.
             Human advisors may review limited interactions for QA or dispute resolution.
             We never sell or disclose your personal data for advertising.
           </p>
