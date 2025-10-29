@@ -11,7 +11,6 @@ import {
   query,
   updateDoc,
   where,
-  writeBatch,
   documentId
 } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
@@ -94,7 +93,7 @@ export default function AdvisorDashboard() {
 
           // If we had a previous listener for chatRequests, detach it first
           if (unsubscribeChatRequests) {
-            try { unsubscribeChatRequests(); } catch (e) { /* ignore */ }
+            try { unsubscribeChatRequests(); } catch { /* ignore */ }
             unsubscribeChatRequests = null;
           }
 
@@ -111,9 +110,9 @@ export default function AdvisorDashboard() {
               snap.forEach((d) => requests.push({ id: d.id, ...d.data() } as ChatRequest));
 
               // Fetch user docs for each unique userId referenced in requests
-              try {
+                try {
                 const userIds = Array.from(new Set(requests.map((r) => r.userId).filter(Boolean)));
-                const usersMap: Record<string, any> = {};
+                const usersMap: Record<string, ChatRequest['user']> = {};
 
                 if (userIds.length > 0) {
                   // Use a single query when number of ids is within Firestore 'in' limits
@@ -131,9 +130,9 @@ export default function AdvisorDashboard() {
                           try {
                             const uDoc = await getDoc(doc(db, 'users', uid));
                             if (uDoc.exists()) usersMap[uid] = uDoc.data();
-                          } catch (e) {
-                            console.error('Failed to fetch user', uid, e);
-                          }
+                          } catch (err) {
+                              console.error('Failed to fetch user', uid, err);
+                            }
                         })
                       );
                     }
@@ -158,8 +157,8 @@ export default function AdvisorDashboard() {
                 }));
 
                 setChatRequests(augmented);
-              } catch (e) {
-                console.error('Error attaching user details to chat requests', e);
+                } catch (err) {
+                console.error('Error attaching user details to chat requests', err);
                 setChatRequests(requests);
               }
             })();
@@ -170,7 +169,7 @@ export default function AdvisorDashboard() {
 
       return () => {
         unsubscribeExpert();
-        if (unsubscribeChatRequests) try { unsubscribeChatRequests(); } catch (e) { /* ignore */ }
+        if (unsubscribeChatRequests) try { unsubscribeChatRequests(); } catch { /* ignore */ }
       };
     }
   }, [user]);
@@ -190,44 +189,7 @@ export default function AdvisorDashboard() {
     }
   };
 
-  const acceptChatRequest = async (requestId: string, roomId: string) => {
-    if (!user) return;
-    
-    try {
-      const batch = writeBatch(db);
-      
-  // Get the chat request to find the userId
-      const chatRequestDoc = await getDoc(doc(db, 'chatRequests', requestId));
-      if (!chatRequestDoc.exists()) {
-        alert('Chat request not found');
-        return;
-      }
-      
-      const chatRequestData = chatRequestDoc.data();
-      
-      // Create chat room document
-      batch.set(doc(db, 'chatRooms', roomId), {
-        userId: chatRequestData.userId,
-        advisorId: user.uid,
-        status: 'active',
-        createdAt: new Date(),
-      });
-      
-      // Update chat request status
-      batch.update(doc(db, 'chatRequests', requestId), {
-        status: 'accepted',
-        acceptedAt: new Date(),
-      });
-
-      await batch.commit();
-      
-      // Redirect to chat interface
-      window.open(`/chat/${roomId}`, '_blank');
-    } catch (error) {
-      console.error('Error accepting chat request:', error);
-      alert('Failed to accept chat request');
-    }
-  };
+  
 
   const joinChat = (roomId: string) => {
     // Open chat in new tab

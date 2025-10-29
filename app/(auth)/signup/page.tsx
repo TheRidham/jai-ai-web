@@ -5,6 +5,7 @@ import { auth, db, storage } from "@/lib/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { collection, addDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import Image from 'next/image';
 import {
   Camera,
   Upload,
@@ -210,10 +211,13 @@ export default function SignUpForm() {
         <div className="flex flex-col items-center">
           <div className="relative w-28 h-28 rounded-full border-4 border-blue-200 flex items-center justify-center bg-gray-100 overflow-hidden">
             {preview ? (
-              <img
+              <Image
                 src={preview}
                 alt="Profile Preview"
+                width={112}
+                height={112}
                 className="w-full h-full object-cover"
+                style={{ objectFit: 'cover' }}
               />
             ) : (
               <Camera size={40} className="text-gray-400" />

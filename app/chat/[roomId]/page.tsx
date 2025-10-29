@@ -124,10 +124,10 @@ export default function ChatPage() {
         if (!uid) return setChatUser(null);
         try {
           const uDoc = await getDoc(doc(db, 'users', uid));
-          if (uDoc.exists()) setChatUser(uDoc.data() as any);
+          if (uDoc.exists()) setChatUser(uDoc.data() as { name?: string; phone?: string; email?: string });
           else setChatUser(null);
-        } catch (e) {
-          console.error('Failed to fetch chat user profile', e);
+        } catch (err: unknown) {
+          console.error('Failed to fetch chat user profile', err);
           setChatUser(null);
         }
       };
@@ -135,10 +135,10 @@ export default function ChatPage() {
       // Also set up a small watcher: when chatRoom snapshot updates, fetch the user
       const unsubRoomWatcher = onSnapshot(doc(db, 'chatRooms', roomId), (r) => {
         if (r.exists()) {
-          const data = r.data() as any;
-          fetchChatUser(data.userId as string | undefined);
+          const data = r.data() as Partial<ChatRoom> | undefined;
+          fetchChatUser(data?.userId as string | undefined);
         }
-      }, (err) => console.error('room watcher error', err));
+      }, (err: unknown) => console.error('room watcher error', err));
       return () => {
         unsubscribeChatRoom();
         unsubscribeMessages();
