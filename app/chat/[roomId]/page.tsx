@@ -20,6 +20,17 @@ import { useEffect, useState } from 'react';
 interface Message {
   id: string;
   content: string;
+  // Optional file info for attachments (images, audio, documents)
+  file?: {
+    fileUrl?: string;
+    uri?: string;
+    name?: string;
+    type?: string;
+  };
+  // Flag for voice/audio messages
+  isAudioMessage?: boolean;
+  // Optional transcription for audio messages
+  transcription?: string;
   senderType: 'user' | 'advisor';
   userId: string;
   advisorId: string;
@@ -46,6 +57,24 @@ interface ChatRequest {
   createdAt: unknown;
   acceptedAt?: unknown;
   closedAt?: unknown;
+}
+
+// Firestore message shape (may vary between clients/mobile/web)
+interface MessageFirestore {
+  content?: string;
+  text?: string;
+  file?: { fileUrl?: string; uri?: string; name?: string; type?: string } | null;
+  fileUrl?: string;
+  audioUrl?: string;
+  audioType?: string;
+  audioName?: string;
+  isAudioMessage?: boolean;
+  transcription?: string;
+  transcript?: string;
+  senderType?: 'user' | 'advisor';
+  userId?: string;
+  advisorId?: string;
+  createdAt?: unknown;
 }
 
 export default function ChatPage() {
@@ -85,7 +114,7 @@ export default function ChatPage() {
         setLoading(false);
       });
 
-      // Listen to messages
+      // Listen to messages and normalize message shape so web supports mobile-sent audio
       const unsubscribeMessages = onSnapshot(
         query(
           collection(db, 'chatRooms', roomId, 'messages'),
@@ -94,7 +123,49 @@ export default function ChatPage() {
         (snapshot) => {
           const msgs: Message[] = [];
           snapshot.forEach((doc) => {
-            msgs.push({ id: doc.id, ...doc.data() } as Message);
+            const data = doc.data() as MessageFirestore;
+
+            // Normalize fields from mobile/web differences:
+            // - some clients use `text` while web expects `content`
+            // - some clients store the uploaded URL as `file.fileUrl` or as `fileUrl` on root
+            // - audio messages may be marked with `isAudioMessage` or can be inferred from file type/extension
+            const content = data.content ?? data.text ?? '';
+
+            let file = data.file ?? undefined;
+            // Support legacy/root keys: fileUrl or audioUrl (mobile sends audioUrl/audioType/audioName)
+            if (!file && data.fileUrl) {
+              file = { fileUrl: data.fileUrl };
+            }
+            if (!file && data.audioUrl) {
+              file = {
+                fileUrl: data.audioUrl,
+                type: data.audioType,
+                name: data.audioName,
+              };
+            }
+
+            const fileUrl = file?.fileUrl || file?.uri;
+
+            const isAudioFromType = !!(
+              file && (
+                (file.type && typeof file.type === 'string' && file.type.startsWith('audio/')) ||
+                (fileUrl && /\.(mp3|m4a|wav|aac|ogg|webm)$/i.test(fileUrl))
+              )
+            );
+
+            const normalized: Message = {
+              id: doc.id,
+              content,
+              file,
+              isAudioMessage: data.isAudioMessage || isAudioFromType || false,
+              transcription: data.transcription ?? data.transcript ?? undefined,
+              senderType: data.senderType,
+              userId: data.userId,
+              advisorId: data.advisorId,
+              createdAt: data.createdAt,
+            } as Message;
+
+            msgs.push(normalized);
           });
           setMessages(msgs);
         },
@@ -247,7 +318,7 @@ export default function ChatPage() {
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.length === 0 ? (
+            {messages.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-500">No messages yet. Start the conversation!</p>
             </div>
@@ -268,7 +339,25 @@ export default function ChatPage() {
                         : 'bg-white text-gray-800 border'
                     }`}
                   >
-                    <p className="break-words">{message.content}</p>
+                    {/* Render audio player for audio messages (sent from mobile) */}
+                    {message.isAudioMessage && (message.file?.fileUrl || message.file?.uri) ? (
+                      <div className="flex flex-col space-y-2">
+                        <audio
+                          controls
+                          src={message.file?.fileUrl || message.file?.uri}
+                          className="w-full"
+                        >
+                          Your browser does not support the audio element.
+                        </audio>
+                        {message.transcription ? (
+                          <div className="text-sm italic text-gray-600 bg-gray-50 p-2 rounded">
+                            {message.transcription}
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <p className="break-words">{message.content}</p>
+                    )}
                     <p
                       className={`text-xs mt-1 ${
                         isFromAdvisor
