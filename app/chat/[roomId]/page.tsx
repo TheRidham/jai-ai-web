@@ -5,11 +5,14 @@ import { onAuthStateChanged, User } from 'firebase/auth';
 import {
   addDoc,
   collection,
+  deleteField,
   doc,
   getDoc,
+  increment,
   onSnapshot,
   orderBy,
   query,
+  runTransaction,
   serverTimestamp,
   where
 } from 'firebase/firestore';
@@ -178,16 +181,19 @@ export default function ChatPage() {
       const unsubscribeChatRequest = onSnapshot(
         query(
           collection(db, 'chatRequests'),
-          where('roomId', '==', roomId),
-          where('advisorId', '==', user.uid)
+          where('roomId', '==', roomId)
         ),
         (snapshot) => {
           if (!snapshot.empty) {
             const doc = snapshot.docs[0];
             setChatRequest({ id: doc.id, ...doc.data() } as ChatRequest);
+          } else {
+            console.warn('No chat request found for this room:', roomId);
           }
-        }
+        },
+        (error) => console.error('Error listening to chat request:', error)
       );
+
 
       // Fetch the requesting user's profile once we know the chat room's userId
       // We'll watch chatRoom via onSnapshot above and fetch here when available
@@ -245,6 +251,7 @@ export default function ChatPage() {
     }
     
     try {
+      // First try the cloud function
       const endChatFunction = httpsCallable(functions, 'endChat');
       await endChatFunction({
         roomId: roomId,
@@ -254,8 +261,83 @@ export default function ChatPage() {
       // Redirect back to advisor dashboard
       router.push('/dashboard');
     } catch (error) {
-      console.error('Error ending session:', error);
-      alert('Failed to end session');
+      console.error('Error with cloud function, attempting fallback:', error);
+      
+      try {
+        // Fallback implementation if cloud function fails
+        const reqRef = doc(db, 'chatRequests', chatRequest.id);
+        const reqSnap = await getDoc(reqRef);
+        const reqData = reqSnap.data();
+        const sessionId = reqData?.payment?.sessionId;
+
+        // Run all updates in a transaction
+        await runTransaction(db, async (transaction) => {
+          // Do all reads first
+          const roomRef = doc(db, 'chatRooms', roomId);
+          const roomSnap = await transaction.get(roomRef);
+          
+          if (!roomSnap.exists()) {
+            throw new Error('Room not found');
+          }
+          
+          // Read payment session if exists
+          let sessionExists = false;
+          if (sessionId) {
+            const sessionRef = doc(db, 'paymentSessions', sessionId);
+            const sessionSnap = await transaction.get(sessionRef);
+            sessionExists = sessionSnap.exists();
+          }
+
+          // Now do all writes
+          const roomData = roomSnap.data();
+          const { advisorId, userId } = roomData;
+          
+          if (user.uid !== advisorId && user.uid !== userId) {
+            throw new Error('Not a participant');
+          }
+
+          // Update advisor status
+          const advisorRef = doc(db, 'advisors', advisorId);
+          const advisorSnap = await transaction.get(advisorRef);
+          
+          if (!advisorSnap.exists()) {
+            throw new Error('Advisor doc not found');
+          }
+          
+          transaction.update(advisorRef, {
+            busy: false,
+            busySince: deleteField(),
+            totalUsersAttended: increment(1)
+          });
+
+          // Update room status
+          transaction.update(roomRef, {
+            status: 'closed',
+            closedAt: serverTimestamp(),
+          });
+
+          // Update chat request status
+          transaction.update(reqRef, {
+            status: 'closed',
+            closedAt: serverTimestamp(),
+          });
+
+          // Update payment session if exists
+          if (sessionId && sessionExists) {
+            const sessionRef = doc(db, 'paymentSessions', sessionId);
+            transaction.update(sessionRef, {
+              status: 'ended',
+              endedAt: serverTimestamp(),
+            });
+          }
+        });
+
+        // Redirect back to advisor dashboard after successful fallback
+        router.push('/dashboard');
+      } catch (fallbackError) {
+        console.error('Error in fallback implementation:', fallbackError);
+        alert('Failed to end session');
+      }
     }
   };
 

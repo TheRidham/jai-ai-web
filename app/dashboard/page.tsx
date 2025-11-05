@@ -41,7 +41,7 @@ interface ChatRequest {
   } | null;
 }
 
-interface Advisor {
+export interface Advisor {
   id: string;
   name: string;
   email: string;
@@ -57,7 +57,7 @@ interface Advisor {
 
 export default function AdvisorDashboard() {
   const [user, setUser] = useState<User | null>(null);
-  const [expert, setExpert] = useState<Advisor | null>(null);
+  const [advisor, setAdvisor] = useState<Advisor | null>(null);
   const [chatRequests, setChatRequests] = useState<ChatRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -78,18 +78,18 @@ export default function AdvisorDashboard() {
   useEffect(() => {
     if (user) {
       // Find advisor document by UID
-      const expertQuery = query(
+      const advisorQuery = query(
         collection(db, 'advisors'),
         where('uid', '==', user.uid)
       );
       
       // Listen to advisor data and chat requests for that advisor (use advisor doc ID)
       let unsubscribeChatRequests: (() => void) | null = null;
-      const unsubscribeExpert = onSnapshot(expertQuery, (snapshot) => {
+      const unsubscribeAdvisor = onSnapshot(advisorQuery, (snapshot) => {
         if (!snapshot.empty) {
-          const expertDoc = snapshot.docs[0];
-          const adv = { id: expertDoc.id, ...expertDoc.data() } as Advisor;
-          setExpert(adv);
+          const advisorDoc = snapshot.docs[0];
+          const adv = { id: advisorDoc.id, ...advisorDoc.data() } as Advisor;
+          setAdvisor(adv);
 
           // If we had a previous listener for chatRequests, detach it first
           if (unsubscribeChatRequests) {
@@ -168,20 +168,20 @@ export default function AdvisorDashboard() {
       });
 
       return () => {
-        unsubscribeExpert();
+        unsubscribeAdvisor();
         if (unsubscribeChatRequests) try { unsubscribeChatRequests(); } catch { /* ignore */ }
       };
     }
   }, [user]);
 
   const toggleAvailability = async () => {
-    if (!expert || !user) return;
+    if (!advisor || !user) return;
 
     try {
       // Update in advisors collection using document ID
-      await updateDoc(doc(db, 'advisors', expert.id), {
-        busy: !expert.busy,
-        busySince: expert.busy ? null : new Date(),
+      await updateDoc(doc(db, 'advisors', advisor.id), {
+        busy: !advisor.busy,
+        busySince: advisor.busy ? null : new Date(),
       });
     } catch (error) {
       console.error('Error updating availability:', error);
@@ -197,7 +197,7 @@ export default function AdvisorDashboard() {
   };
 
   const endSession = async (requestId: string) => {
-    if (!user || !expert) return;
+    if (!user || !advisor) return;
     
     try {
       // Get the chat request to find the room ID
@@ -215,10 +215,10 @@ export default function AdvisorDashboard() {
         closedAt: new Date(),
       });
 
-      // Increment expert's user count
-      await updateDoc(doc(db, 'advisors', expert.id), {
-        totalUsersAttended: (expert.totalUsersAttended || 0) + 1,
-        busy: false, // Set expert as available after ending session
+      // Increment advisor's user count
+      await updateDoc(doc(db, 'advisors', advisor.id), {
+        totalUsersAttended: (advisor.totalUsersAttended || 0) + 1,
+        busy: false, // Set advisor as available after ending session
       });
 
       // Optional: Call cloud function if exists
@@ -269,7 +269,7 @@ export default function AdvisorDashboard() {
     );
   }
 
-  if (!expert) {
+  if (!advisor) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="bg-white p-8 rounded-lg shadow-md">
@@ -304,19 +304,19 @@ export default function AdvisorDashboard() {
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <h1 className="text-3xl font-bold text-gray-800">Advisor Dashboard</h1>
-              <p className="text-gray-600">Welcome, {expert.name}</p>
+              <p className="text-gray-600">Welcome, {advisor.name}</p>
               <p className="text-sm text-gray-500 mb-2">
-                {Array.isArray(expert.specialization) ? expert.specialization.join(', ') : expert.specialization}
+                {Array.isArray(advisor.specialization) ? advisor.specialization.join(', ') : advisor.specialization}
               </p>
               <div className="flex items-center gap-4 text-xs text-gray-600">
                 <span className="bg-blue-100 px-2 py-1 rounded-full">
-                  {expert.experience} years experience
+                  {advisor.experience} years experience
                 </span>
                 <span className="bg-green-100 px-2 py-1 rounded-full">
-                  {expert.certification}
+                  {advisor.certification}
                 </span>
                 <span className="bg-purple-100 px-2 py-1 rounded-full">
-                  {expert.totalUsersAttended || 0} users helped
+                  {advisor.totalUsersAttended || 0} users helped
                 </span>
               </div>
             </div>
@@ -324,24 +324,24 @@ export default function AdvisorDashboard() {
               <div className="flex items-center space-x-2">
                 <div 
                   className={`w-3 h-3 rounded-full ${
-                    expert.busy ? 'bg-red-500' : 'bg-green-500'
+                    advisor.busy ? 'bg-red-500' : 'bg-green-500'
                   }`}
                 ></div>
                 <span className={`font-medium ${
-                  expert.busy ? 'text-red-600' : 'text-green-600'
+                  advisor.busy ? 'text-red-600' : 'text-green-600'
                 }`}>
-                  {expert.busy ? 'Busy' : 'Available'}
+                  {advisor.busy ? 'Busy' : 'Available'}
                 </span>
               </div>
               <button
                 onClick={toggleAvailability}
                 className={`px-4 py-2 rounded-md font-medium ${
-                  expert.busy
+                  advisor.busy
                     ? 'bg-green-600 text-white hover:bg-green-700'
                     : 'bg-red-600 text-white hover:bg-red-700'
                 }`}
               >
-                {expert.busy ? 'Go Available' : 'Go Busy'}
+                {advisor.busy ? 'Go Available' : 'Go Busy'}
               </button>
               <button
                 onClick={handleSignOut}

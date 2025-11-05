@@ -21,6 +21,7 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
-export const functions = getFunctions(app);
+// Functions are deployed to asia-south1 in the backend; initialize the client to use the same region
+export const functions = getFunctions(app, 'asia-south1');
 
 export default app;

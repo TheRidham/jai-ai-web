@@ -45,6 +45,7 @@ export default function SignUpForm() {
     name: "",
     age: "",
     experience: "",
+    degree: "",
     specialization: [] as string[],
     certification: "",
     email: "",
@@ -144,10 +145,11 @@ export default function SignUpForm() {
         name: form.name.trim().replace(/\s+/g, ' ').toLowerCase(),
         age: form.age,
         experience: form.experience,
+        degree: form.degree,
         specialization: form.specialization, // Array of strings (UI label)
         certification: form.certification.trim(),
         email: form.email.trim(),
-  phone: formattedPhone,
+        phone: formattedPhone,
         profilePhoto: photoURL,
         busy: false,
         isActive: true,
@@ -284,6 +286,21 @@ export default function SignUpForm() {
               type="number"
               placeholder="e.g., 5"
               value={form.experience}
+              onChange={handleChange}
+              className="w-full bg-blue-300/10 backdrop-blur-sm border border-blue-500/10 rounded-xl p-3 text-black placeholder-gray-400 outline-none focus:bg-white/10 focus:border-blue-500/50 transition-all duration-200"
+              required
+            />
+          </div>
+
+          <div className="group">
+            <label className="flex items-center gap-2 text-blue-500 text-lg font-medium mb-2">
+              <Award size={20} />
+              Degree
+            </label>
+            <input
+              name="degree"
+              placeholder="e.g., MBBS, MSc Nutrition, BPharm"
+              value={form.degree}
               onChange={handleChange}
               className="w-full bg-blue-300/10 backdrop-blur-sm border border-blue-500/10 rounded-xl p-3 text-black placeholder-gray-400 outline-none focus:bg-white/10 focus:border-blue-500/50 transition-all duration-200"
               required
