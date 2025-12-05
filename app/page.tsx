@@ -59,6 +59,12 @@ export default function Home() {
           >
             Sign Up as Advisor
           </Link>
+          <Link
+            href="/admin"
+            className="w-full bg-white text-blue-600 py-4 px-6 rounded-lg font-semibold text-center block border-2 border-blue-200 hover:bg-blue-50 transition-colors"
+          >
+            Login as Admin
+          </Link>
         </div>
       </div>
     </div>
