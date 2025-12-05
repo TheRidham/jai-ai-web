@@ -24,13 +24,11 @@ export default function Admin() {
     setMessage("");
 
     try {
-      // Sign in with email and password
       await signInWithEmailAndPassword(auth, form.email, form.password);
       setMessage("Login successful!");
-      router.push("/all-advisors");
+      router.push("/admin/all-advisors");
     } catch (err: unknown) {
       console.error("Firebase Auth Error:", err);
-      // Provide specific error messages based on firebase error codes when available
       let errorMessage = "An error occurred. Please try again.";
 
       if (typeof err === "object" && err !== null) {

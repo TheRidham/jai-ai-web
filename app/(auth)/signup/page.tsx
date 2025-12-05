@@ -20,7 +20,6 @@ import {
   ChevronDown,
 } from "lucide-react";
 
-// Predefined specialization categories
 const SPECIALIZATION_OPTIONS = [
   "Nutrition & Diet",
   "Fitness",
@@ -60,7 +59,6 @@ export default function SignUpForm() {
   const [showSpecializationDropdown, setShowSpecializationDropdown] = useState(false);
   const router = useRouter();
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Element;
@@ -100,7 +98,6 @@ export default function SignUpForm() {
     setMessage("");
 
     try {
-      // Basic form validation
       if (form.password.length < 6) {
         setMessage("Password must be at least 6 characters long");
         setLoading(false);
@@ -119,16 +116,13 @@ export default function SignUpForm() {
         return;
       }
 
-      // Format phone number for storage (use `phone` field)
       let formattedPhone = form.phone.trim();
       if (formattedPhone && !formattedPhone.startsWith('+')) {
         formattedPhone = '+' + formattedPhone;
       }
 
-      // Create user with email and password
       const userCredential = await createUserWithEmailAndPassword(auth, form.email, form.password);
 
-      // Upload profile photo if exists
       let photoURL = "";
       if (photo) {
         const storageRef = ref(
@@ -139,7 +133,6 @@ export default function SignUpForm() {
         photoURL = await getDownloadURL(storageRef);
       }
 
-      // Save advisor profile to Firestore (use advisors collection)
       await addDoc(collection(db, "advisors"), {
         uid: userCredential.user.uid,
         name: form.name.trim().replace(/\s+/g, ' ').toLowerCase(),
@@ -158,7 +151,7 @@ export default function SignUpForm() {
       });
 
       setMessage("Account created successfully!");
-      router.push('/dashboard');
+      router.push('/advisor/dashboard');
     } catch (err: unknown) {
       console.error('Firebase Auth Error:', err);
 
@@ -209,7 +202,6 @@ export default function SignUpForm() {
           Create your advisor profile
         </p>
 
-        {/* Profile Photo Upload */}
         <div className="flex flex-col items-center">
           <div className="relative w-28 h-28 rounded-full border-4 border-blue-200 flex items-center justify-center bg-gray-100 overflow-hidden">
             {preview ? (
@@ -243,7 +235,6 @@ export default function SignUpForm() {
           </span>
         </div>
 
-        {/* Input Fields */}
         <div className="space-y-5">
           <div className="group">
             <label className="flex items-center gap-2 text-blue-600 font-medium text-lg mb-2">

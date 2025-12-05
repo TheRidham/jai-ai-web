@@ -13,8 +13,7 @@ export default function Home() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        // User is authenticated, redirect to dashboard
-        router.push('/dashboard');
+        router.push('/advisor/dashboard');
       } else {
         setLoading(false);
       }

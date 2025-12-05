@@ -25,10 +25,8 @@ export default function LoginForm() {
     setMessage("");
 
     try {
-      // Sign in with email and password
       const userCredential = await signInWithEmailAndPassword(auth, form.email, form.password);
       
-      // Check if advisor profile exists
       const advisorsQuery = query(
         collection(db, "advisors"), 
         where("uid", "==", userCredential.user.uid)
@@ -42,11 +40,10 @@ export default function LoginForm() {
       }
 
       setMessage("Login successful!");
-      router.push('/dashboard');
+      router.push('/advisor/dashboard');
     } catch (err: unknown) {
       console.error('Firebase Auth Error:', err);
 
-      // Provide specific error messages based on firebase error codes when available
       let errorMessage = "An error occurred. Please try again.";
 
   if (typeof err === 'object' && err !== null) {
@@ -90,12 +87,14 @@ export default function LoginForm() {
         onSubmit={handleSubmit}
         className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 space-y-6 border border-blue-200"
       >
-        <h2 className="text-3xl font-bold text-center text-blue-500">
-          Advisor Login
-        </h2>
-        <p className="text-center text-blue-600 text-lg">
-          Sign in to your advisor account
-        </p>
+        <div>
+          <h2 className="text-3xl font-bold text-center text-blue-500 mb-2">
+            Advisor Login
+          </h2>
+          <p className="text-center text-black text-base">
+            Sign in to your advisor account
+          </p>
+        </div>
 
         <div className="space-y-4">
           <div className="group">

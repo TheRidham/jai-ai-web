@@ -10,14 +10,15 @@ import {
   doc,
 } from "firebase/firestore";
 import { LogOut, Trash2, User, Mail, Phone, Loader2 } from "lucide-react";
+import Image from "next/image";
 
 interface Advisor {
   id: string;
   name?: string;
   email?: string;
   phone?: string;
-  specialization?: string;
-  photoURL?: string;
+  specialization?: string[];
+  profilePhoto?: string;
   [key: string]: unknown;
 }
 
@@ -28,7 +29,6 @@ export default function AllAdvisors() {
   const [authChecked, setAuthChecked] = useState(false);
   const router = useRouter();
 
-  // Check authentication
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user) {
@@ -41,7 +41,6 @@ export default function AllAdvisors() {
     return () => unsubscribe();
   }, [router]);
 
-  // Fetch advisors
   useEffect(() => {
     const fetchAdvisors = async () => {
       try {
@@ -98,9 +97,8 @@ export default function AllAdvisors() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header with Logout */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
+    <div className="min-h-screen bg-gray-50 relative">
+      <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <h1 className="text-2xl font-bold text-blue-600">Admin Dashboard</h1>
@@ -115,7 +113,6 @@ export default function AllAdvisors() {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-6">
           <h2 className="text-xl font-semibold text-gray-800">
@@ -148,13 +145,14 @@ export default function AllAdvisors() {
                 key={advisor.id}
                 className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow"
               >
-                {/* Card Header with Photo */}
                 <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-4">
                   <div className="flex items-center gap-4">
-                    {advisor.photoURL ? (
-                      <img
-                        src={advisor.photoURL}
+                    {advisor.profilePhoto ? (
+                      <Image
+                        src={advisor.profilePhoto}
                         alt={advisor.name || "Advisor"}
+                        width={48}
+                        height={48}
                         className="w-16 h-16 rounded-full object-cover border-2 border-white"
                       />
                     ) : (
@@ -168,14 +166,13 @@ export default function AllAdvisors() {
                       </h3>
                       {advisor.specialization && (
                         <p className="text-blue-100 text-sm truncate">
-                          {advisor.specialization}
+                          {advisor.specialization.join(', ')}
                         </p>
                       )}
                     </div>
                   </div>
                 </div>
 
-                {/* Card Body */}
                 <div className="p-4 space-y-3">
                   {advisor.email && (
                     <div className="flex items-center gap-2 text-gray-600">
@@ -191,7 +188,6 @@ export default function AllAdvisors() {
                   )}
                 </div>
 
-                {/* Card Footer with Delete Button */}
                 <div className="px-4 pb-4">
                   <button
                     onClick={() => handleDeleteAdvisor(advisor.id)}
