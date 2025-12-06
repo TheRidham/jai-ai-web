@@ -9,8 +9,9 @@ import {
   deleteDoc,
   doc,
 } from "firebase/firestore";
-import { LogOut, Trash2, User, Mail, Phone, Loader2 } from "lucide-react";
+import { LogOut, Trash2, User, Mail, Phone, Loader2, MessageSquare } from "lucide-react";
 import Image from "next/image";
+import ChatHistorySidebar from "@/app/components/ChatHistorySidebar";
 
 interface Advisor {
   id: string;
@@ -27,6 +28,7 @@ export default function AllAdvisors() {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [isChatHistoryOpen, setIsChatHistoryOpen] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -102,13 +104,22 @@ export default function AllAdvisors() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <h1 className="text-2xl font-bold text-blue-600">Admin Dashboard</h1>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-            >
-              <LogOut size={18} />
-              Logout
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setIsChatHistoryOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors"
+              >
+                <MessageSquare size={18} />
+                Chat History
+              </button>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+              >
+                <LogOut size={18} />
+                Logout
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -212,6 +223,12 @@ export default function AllAdvisors() {
           </div>
         )}
       </main>
+
+      {/* Chat History Sidebar */}
+      <ChatHistorySidebar
+        isOpen={isChatHistoryOpen}
+        onClose={() => setIsChatHistoryOpen(false)}
+      />
     </div>
   );
 }
