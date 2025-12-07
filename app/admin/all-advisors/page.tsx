@@ -9,7 +9,7 @@ import {
   deleteDoc,
   doc,
 } from "firebase/firestore";
-import { LogOut, Trash2, User, Mail, Phone, Loader2 } from "lucide-react";
+import { LogOut, Trash2, User, Mail, Phone, Loader2, ChartNoAxesColumnIncreasing } from "lucide-react";
 import Image from "next/image";
 
 interface Advisor {
@@ -107,7 +107,7 @@ export default function AllAdvisors() {
                 onClick={() => router.push("/admin/analysis")}
                 className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
               >
-                <LogOut size={18} />
+              <ChartNoAxesColumnIncreasing size={18} /> 
                 Analysis
               </button>
               <button
