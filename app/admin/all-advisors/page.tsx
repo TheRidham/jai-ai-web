@@ -9,7 +9,7 @@ import {
   deleteDoc,
   doc,
 } from "firebase/firestore";
-import { LogOut, Trash2, User, Mail, Phone, Loader2, MessageSquare } from "lucide-react";
+import { LogOut, Trash2, User, Mail, Phone, Loader2 } from "lucide-react";
 import Image from "next/image";
 
 interface Advisor {
