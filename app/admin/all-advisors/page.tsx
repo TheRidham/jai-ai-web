@@ -27,7 +27,6 @@ export default function AllAdvisors() {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
-  const [, setIsChatHistoryOpen] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -110,13 +109,6 @@ export default function AllAdvisors() {
               >
                 <LogOut size={18} />
                 Analysis
-              </button>
-              <button
-                onClick={() => setIsChatHistoryOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors"
-              >
-                <MessageSquare size={18} />
-                Chat History
               </button>
               <button
                 onClick={handleLogout}
