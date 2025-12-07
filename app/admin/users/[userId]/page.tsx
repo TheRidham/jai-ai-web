@@ -27,11 +27,13 @@ import {
   ChevronUp,
 } from "lucide-react";
 
+import { Timestamp } from "firebase/firestore";
+
 interface ChatMessage {
   id: string;
   content: string;
   senderType: "user" | "advisor" | "ai";
-  createdAt: any;
+  createdAt: Timestamp | Date | null;
   file?: {
     fileUrl?: string;
     name?: string;
@@ -48,7 +50,7 @@ interface ChatRoom {
   advisorName?: string;
   type: "ai" | "human";
   status: string;
-  createdAt: any;
+  createdAt: Timestamp | Date | null;
   lastMessage?: string;
   messageCount: number;
   messages: ChatMessage[];
@@ -69,6 +71,7 @@ export default function UserDetailPage() {
       fetchUserData();
       fetchChatHistory();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   const fetchUserData = async () => {
@@ -263,7 +266,7 @@ export default function UserDetailPage() {
           const messagesArray = chatData.messages || [];
 
           const messages: ChatMessage[] = messagesArray.map(
-            (msg: any, index: number) => ({
+            (msg: { id?: string; text?: string; content?: string; from?: string; timestamp?: Timestamp | Date }, index: number) => ({
               id: msg.id || String(index),
               content: msg.text || msg.content || "",
               senderType: msg.from === "bot" ? "ai" : "user",
@@ -328,7 +331,7 @@ export default function UserDetailPage() {
                 const messagesArray = chatData.messages || [];
 
                 const messages: ChatMessage[] = messagesArray.map(
-                  (msg: any, index: number) => ({
+                  (msg: { id?: string; text?: string; content?: string; from?: string; timestamp?: Timestamp | Date }, index: number) => ({
                     id: msg.id || String(index),
                     content: msg.text || msg.content || "",
                     senderType: msg.from === "bot" ? "ai" : "user",
@@ -372,9 +375,9 @@ export default function UserDetailPage() {
     }
   };
 
-  const formatDate = (timestamp: any) => {
+  const formatDate = (timestamp: Timestamp | Date | null) => {
     if (!timestamp) return "Unknown";
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    const date = timestamp instanceof Date ? timestamp : (timestamp as Timestamp).toDate?.() ?? new Date(timestamp as unknown as string);
     return date.toLocaleDateString("en-IN", {
       day: "numeric",
       month: "short",
@@ -406,7 +409,7 @@ export default function UserDetailPage() {
           <UserIcon className="w-20 h-20 text-gray-300 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-700">User Not Found</h2>
           <p className="text-gray-500 mt-2">
-            The user you're looking for doesn't exist.
+            The user you&apos;re looking for doesn&apos;t exist.
           </p>
           <button
             onClick={() => router.back()}
@@ -585,7 +588,7 @@ export default function UserDetailPage() {
                 No Chat History
               </h3>
               <p className="text-gray-500 mt-2">
-                This user hasn't started any conversations yet.
+                This user hasn&apos;t started any conversations yet.
               </p>
             </div>
           ) : (

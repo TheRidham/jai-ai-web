@@ -19,6 +19,7 @@ import {
 import { httpsCallable } from 'firebase/functions';
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 
 interface Message {
   id: string;
@@ -336,9 +337,11 @@ export default function ChatPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               {chatUser?.profilePhoto || chatUser?.photoURL ? (
-                <img
-                  src={chatUser.profilePhoto || chatUser.photoURL}
+                <Image
+                  src={chatUser.profilePhoto || chatUser.photoURL || ''}
                   alt={chatUser?.name || 'User'}
+                  width={48}
+                  height={48}
                   className="w-12 h-12 rounded-full object-cover border-2 border-blue-100 shadow-md"
                 />
               ) : (
@@ -464,9 +467,11 @@ export default function ChatPage() {
                           if (isImage) {
                             return (
                               <div>
-                                <img
+                                <Image
                                   src={fileUrl}
                                   alt={fileName}
+                                  width={300}
+                                  height={300}
                                   className="max-w-full max-h-[300px] rounded-lg object-contain cursor-pointer hover:opacity-90 transition-opacity"
                                   onClick={() => window.open(fileUrl, '_blank')}
                                   onError={(e) => {

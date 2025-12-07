@@ -11,7 +11,6 @@ import {
 } from "firebase/firestore";
 import { LogOut, Trash2, User, Mail, Phone, Loader2, MessageSquare } from "lucide-react";
 import Image from "next/image";
-import ChatHistorySidebar from "@/app/components/ChatHistorySidebar";
 
 interface Advisor {
   id: string;
@@ -28,7 +27,7 @@ export default function AllAdvisors() {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
-  const [isChatHistoryOpen, setIsChatHistoryOpen] = useState(false);
+  const [, setIsChatHistoryOpen] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -230,12 +229,6 @@ export default function AllAdvisors() {
           </div>
         )}
       </main>
-
-      {/* Chat History Sidebar */}
-      <ChatHistorySidebar
-        isOpen={isChatHistoryOpen}
-        onClose={() => setIsChatHistoryOpen(false)}
-      />
     </div>
   );
 }
