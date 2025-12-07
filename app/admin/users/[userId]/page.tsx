@@ -1,24 +1,30 @@
 "use client";
-
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { doc, getDoc, collection, getDocs, query, orderBy } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  collection,
+  getDocs,
+  query,
+  orderBy,
+} from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { User } from "@/types/user";
-import { 
-  ArrowLeft, 
-  User as UserIcon, 
-  Mail, 
-  Phone, 
-  Calendar, 
-  Wallet, 
+import {
+  ArrowLeft,
+  User as UserIcon,
+  Mail,
+  Phone,
+  Calendar,
+  Wallet,
   Gift,
   MessageSquare,
   Bot,
   UserCheck,
   Clock,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
 } from "lucide-react";
 
 interface ChatMessage {
@@ -90,18 +96,24 @@ export default function UserDetailPage() {
         query(collection(db, "chatRequests"), orderBy("createdAt", "desc"))
       );
 
-      console.log("Total chat requests found:", chatRequestsSnapshot.docs.length);
+      console.log(
+        "Total chat requests found:",
+        chatRequestsSnapshot.docs.length
+      );
 
       const rooms: ChatRoom[] = [];
 
       for (const requestDoc of chatRequestsSnapshot.docs) {
         const requestData = requestDoc.data();
-        
+        console.log(requestData.userId === userId);
         // Filter by userId
         if (requestData.userId !== userId) continue;
-        
+
         const roomId = requestData.roomId;
-        console.log("Found chat for user:", { roomId, userId: requestData.userId });
+        console.log("Found chat for user:", {
+          roomId,
+          userId: requestData.userId,
+        });
 
         if (!roomId) continue;
 
@@ -109,7 +121,9 @@ export default function UserDetailPage() {
         let advisorName = "Unknown Advisor";
         if (requestData.advisorId) {
           try {
-            const advisorDoc = await getDoc(doc(db, "advisors", requestData.advisorId));
+            const advisorDoc = await getDoc(
+              doc(db, "advisors", requestData.advisorId)
+            );
             if (advisorDoc.exists()) {
               advisorName = advisorDoc.data().name || "Unknown Advisor";
             }
@@ -127,58 +141,13 @@ export default function UserDetailPage() {
             )
           );
 
-          console.log(`Messages found for room ${roomId}:`, messagesSnapshot.docs.length);
+          console.log(
+            `Messages found for room ${roomId}:`,
+            messagesSnapshot.docs.length
+          );
 
-          const messages: ChatMessage[] = messagesSnapshot.docs.map((msgDoc) => {
-            const msgData = msgDoc.data();
-            return {
-              id: msgDoc.id,
-              content: msgData.content || msgData.text || "",
-              senderType: msgData.senderType || "user",
-              createdAt: msgData.createdAt,
-              file: msgData.file,
-              isAudioMessage: msgData.isAudioMessage,
-              transcription: msgData.transcription || msgData.transcript,
-            };
-          });
-
-          rooms.push({
-            id: requestDoc.id,
-            roomId,
-            advisorId: requestData.advisorId,
-            advisorName,
-            type: requestData.advisorId ? "human" : "ai",
-            status: requestData.status || "unknown",
-            createdAt: requestData.createdAt,
-            lastMessage: messages[messages.length - 1]?.content || "No messages",
-            messageCount: messages.length,
-            messages,
-          });
-        } catch (msgError) {
-          console.error(`Error fetching messages for room ${roomId}:`, msgError);
-        }
-      }
-
-      // Also check chatRooms collection directly for any rooms with this userId
-      try {
-        const chatRoomsSnapshot = await getDocs(collection(db, "chatRooms"));
-        
-        for (const roomDoc of chatRoomsSnapshot.docs) {
-          const roomData = roomDoc.data();
-          
-          // Check if this room belongs to the user and isn't already added
-          if (roomData.userId === userId && !rooms.find(r => r.roomId === roomDoc.id)) {
-            console.log("Found additional room in chatRooms:", roomDoc.id);
-            
-            // Fetch messages
-            const messagesSnapshot = await getDocs(
-              query(
-                collection(db, `chatRooms/${roomDoc.id}/messages`),
-                orderBy("createdAt", "asc")
-              )
-            );
-
-            const messages: ChatMessage[] = messagesSnapshot.docs.map((msgDoc) => {
+          const messages: ChatMessage[] = messagesSnapshot.docs.map(
+            (msgDoc) => {
               const msgData = msgDoc.data();
               return {
                 id: msgDoc.id,
@@ -189,7 +158,66 @@ export default function UserDetailPage() {
                 isAudioMessage: msgData.isAudioMessage,
                 transcription: msgData.transcription || msgData.transcript,
               };
-            });
+            }
+          );
+
+          rooms.push({
+            id: requestDoc.id,
+            roomId,
+            advisorId: requestData.advisorId,
+            advisorName,
+            type: requestData.advisorId ? "human" : "ai",
+            status: requestData.status || "unknown",
+            createdAt: requestData.createdAt,
+            lastMessage:
+              messages[messages.length - 1]?.content || "No messages",
+            messageCount: messages.length,
+            messages,
+          });
+        } catch (msgError) {
+          console.error(
+            `Error fetching messages for room ${roomId}:`,
+            msgError
+          );
+        }
+      }
+
+      // Also check chatRooms collection directly for any rooms with this userId
+      try {
+        const chatRoomsSnapshot = await getDocs(collection(db, "chatRooms"));
+
+        for (const roomDoc of chatRoomsSnapshot.docs) {
+          const roomData = roomDoc.data();
+
+          // Check if this room belongs to the user and isn't already added
+          if (
+            roomData.userId === userId &&
+            !rooms.find((r) => r.roomId === roomDoc.id)
+          ) {
+            console.log("Found additional room in chatRooms:", roomDoc.id);
+
+            // Fetch messages
+            const messagesSnapshot = await getDocs(
+              query(
+                collection(db, `chatRooms/${roomDoc.id}/messages`),
+                orderBy("createdAt", "asc")
+              )
+            );
+
+            const messages: ChatMessage[] = messagesSnapshot.docs.map(
+              (msgDoc) => {
+                const msgData = msgDoc.data();
+                return {
+                  id: msgDoc.id,
+                  content: msgData.content || msgData.text || "",
+                  senderType: msgData.senderType || "user",
+                  createdAt: msgData.createdAt,
+                  file: msgData.file,
+                  isAudioMessage: msgData.isAudioMessage,
+                  transcription: msgData.transcription || msgData.transcript,
+                };
+              }
+            );
 
             if (messages.length > 0) {
               rooms.push({
@@ -200,7 +228,8 @@ export default function UserDetailPage() {
                 type: roomData.advisorId ? "human" : "ai",
                 status: roomData.status || "completed",
                 createdAt: roomData.createdAt,
-                lastMessage: messages[messages.length - 1]?.content || "No messages",
+                lastMessage:
+                  messages[messages.length - 1]?.content || "No messages",
                 messageCount: messages.length,
                 messages,
               });
@@ -211,51 +240,127 @@ export default function UserDetailPage() {
         console.log("Error checking chatRooms collection:", error);
       }
 
-      // Also fetch AI chat history if stored separately
+      // Also fetch AI chat history from chatHistory collection
+      // Structure: chatHistory/{visitorId}/chats/{chatId} with messages array
       try {
-        const aiChatsSnapshot = await getDocs(collection(db, "aiChats"));
-        
-        for (const aiChatDoc of aiChatsSnapshot.docs) {
-          const aiChatData = aiChatDoc.data();
-          
-          if (aiChatData.userId !== userId) continue;
-          
-          console.log("Found AI chat:", aiChatDoc.id);
-          
-          // Fetch messages for AI chat
-          const messagesSnapshot = await getDocs(
-            query(
-              collection(db, `aiChats/${aiChatDoc.id}/messages`),
-              orderBy("createdAt", "asc")
-            )
-          );
+        console.log("Fetching AI chats from chatHistory for userId:", userId);
 
-          const messages: ChatMessage[] = messagesSnapshot.docs.map((msgDoc) => {
-            const msgData = msgDoc.data();
-            return {
-              id: msgDoc.id,
-              content: msgData.content || msgData.text || "",
-              senderType: msgData.senderType || (msgData.role === "assistant" ? "ai" : "user"),
-              createdAt: msgData.createdAt,
-            };
-          });
+        // The document ID in chatHistory is the visitorId/visitorUserId
+        // First, try direct access with userId as the document ID
+        const chatHistoryRef = collection(db, `chatHistory/${userId}/chats`);
+        const aiChatsSnapshot = await getDocs(chatHistoryRef);
+
+        console.log(
+          "AI chats found in chatHistory:",
+          aiChatsSnapshot.docs.length
+        );
+
+        for (const chatDoc of aiChatsSnapshot.docs) {
+          const chatData = chatDoc.data();
+          console.log("Chat data:", chatDoc.id, chatData);
+
+          // Messages are stored as an array in the document, not as a subcollection
+          const messagesArray = chatData.messages || [];
+
+          const messages: ChatMessage[] = messagesArray.map(
+            (msg: any, index: number) => ({
+              id: msg.id || String(index),
+              content: msg.text || msg.content || "",
+              senderType: msg.from === "bot" ? "ai" : "user",
+              createdAt: msg.timestamp || chatData.createdAt,
+            })
+          );
 
           if (messages.length > 0) {
             rooms.push({
-              id: aiChatDoc.id,
-              roomId: aiChatDoc.id,
+              id: chatDoc.id,
+              roomId: chatDoc.id,
+              advisorName: chatData.advisorName || "AI Assistant",
               type: "ai",
               status: "completed",
-              createdAt: aiChatData.createdAt,
-              lastMessage: messages[messages.length - 1]?.content || "No messages",
+              createdAt: chatData.createdAt || chatData.timestamp,
+              lastMessage:
+                chatData.lastMessage ||
+                messages[messages.length - 1]?.content ||
+                "No messages",
               messageCount: messages.length,
               messages,
             });
           }
         }
       } catch (error) {
-        // AI chats collection might not exist
-        console.log("No separate AI chats collection or error:", error);
+        console.log("Error fetching from chatHistory collection:", error);
+      }
+
+      // If no chats found yet, also try to check all chatHistory documents
+      // in case the userId is stored differently
+      if (rooms.length === 0) {
+        try {
+          console.log("Checking all chatHistory documents...");
+          const allChatHistorySnapshot = await getDocs(
+            collection(db, "chatHistory")
+          );
+
+          for (const historyDoc of allChatHistorySnapshot.docs) {
+            console.log("Checking chatHistory document:", historyDoc.id);
+
+            // Check if this document's ID matches the userId
+            // or if it has a visitorUserId field that matches
+            const historyData = historyDoc.data();
+            const isUserMatch =
+              historyDoc.id === userId ||
+              historyData.visitorUserId === userId ||
+              historyData.userId === userId;
+
+            if (isUserMatch || rooms.length === 0) {
+              // Fetch chats subcollection
+              const chatsSnapshot = await getDocs(
+                collection(db, `chatHistory/${historyDoc.id}/chats`)
+              );
+
+              console.log(
+                `Chats in ${historyDoc.id}:`,
+                chatsSnapshot.docs.length
+              );
+
+              for (const chatDoc of chatsSnapshot.docs) {
+                const chatData = chatDoc.data();
+                const messagesArray = chatData.messages || [];
+
+                const messages: ChatMessage[] = messagesArray.map(
+                  (msg: any, index: number) => ({
+                    id: msg.id || String(index),
+                    content: msg.text || msg.content || "",
+                    senderType: msg.from === "bot" ? "ai" : "user",
+                    createdAt: msg.timestamp || chatData.createdAt,
+                  })
+                );
+
+                if (
+                  messages.length > 0 &&
+                  !rooms.find((r) => r.id === chatDoc.id)
+                ) {
+                  rooms.push({
+                    id: chatDoc.id,
+                    roomId: chatDoc.id,
+                    advisorName: chatData.advisorName || "AI Assistant",
+                    type: "ai",
+                    status: "completed",
+                    createdAt: chatData.createdAt || chatData.timestamp,
+                    lastMessage:
+                      chatData.lastMessage ||
+                      messages[messages.length - 1]?.content ||
+                      "No messages",
+                    messageCount: messages.length,
+                    messages,
+                  });
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.log("Error checking all chatHistory documents:", error);
+        }
       }
 
       console.log("Total rooms found for user:", rooms.length);
@@ -300,7 +405,9 @@ export default function UserDetailPage() {
         <div className="text-center">
           <UserIcon className="w-20 h-20 text-gray-300 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-700">User Not Found</h2>
-          <p className="text-gray-500 mt-2">The user you're looking for doesn't exist.</p>
+          <p className="text-gray-500 mt-2">
+            The user you're looking for doesn't exist.
+          </p>
           <button
             onClick={() => router.back()}
             className="mt-6 px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
@@ -335,7 +442,9 @@ export default function UserDetailPage() {
             {/* User Info */}
             <div className="flex-1">
               <div className="flex items-center gap-4 mb-4">
-                <h1 className="text-3xl font-bold text-gray-900">{user.name || "Unknown"}</h1>
+                <h1 className="text-3xl font-bold text-gray-900">
+                  {user.name || "Unknown"}
+                </h1>
                 <span className="px-3 py-1 bg-blue-50 text-blue-600 text-sm font-medium rounded-full">
                   {user.gender || "Unknown"}
                 </span>
@@ -351,7 +460,9 @@ export default function UserDetailPage() {
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Email</p>
-                    <p className="text-sm font-medium text-gray-800 truncate max-w-[150px]">{user.email || "Unknown"}</p>
+                    <p className="text-sm font-medium text-gray-800 truncate max-w-[150px]">
+                      {user.email || "Unknown"}
+                    </p>
                   </div>
                 </div>
 
@@ -361,7 +472,9 @@ export default function UserDetailPage() {
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Phone</p>
-                    <p className="text-sm font-medium text-gray-800">{user.phone || "Unknown"}</p>
+                    <p className="text-sm font-medium text-gray-800">
+                      {user.phone || "Unknown"}
+                    </p>
                   </div>
                 </div>
 
@@ -371,17 +484,35 @@ export default function UserDetailPage() {
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Wallet Balance</p>
-                    <p className="text-sm font-bold text-green-600">₹{user.walletBalance?.toLocaleString() || "0"}</p>
+                    <p className="text-sm font-bold text-green-600">
+                      ₹{user.walletBalance?.toLocaleString() || "0"}
+                    </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${user.hasClaimedFreeCash ? "bg-purple-100" : "bg-gray-100"}`}>
-                    <Gift className={`w-5 h-5 ${user.hasClaimedFreeCash ? "text-purple-600" : "text-gray-400"}`} />
+                  <div
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                      user.hasClaimedFreeCash ? "bg-purple-100" : "bg-gray-100"
+                    }`}
+                  >
+                    <Gift
+                      className={`w-5 h-5 ${
+                        user.hasClaimedFreeCash
+                          ? "text-purple-600"
+                          : "text-gray-400"
+                      }`}
+                    />
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Free Cash</p>
-                    <p className={`text-sm font-medium ${user.hasClaimedFreeCash ? "text-purple-600" : "text-gray-500"}`}>
+                    <p
+                      className={`text-sm font-medium ${
+                        user.hasClaimedFreeCash
+                          ? "text-purple-600"
+                          : "text-gray-500"
+                      }`}
+                    >
                       {user.hasClaimedFreeCash ? "Claimed" : "Not Claimed"}
                     </p>
                   </div>
@@ -390,7 +521,9 @@ export default function UserDetailPage() {
 
               <div className="mt-4 pt-4 border-t border-gray-100 flex items-center gap-2 text-sm text-gray-500">
                 <Calendar className="w-4 h-4" />
-                <span>Joined {user.createdAt?.toLocaleDateString() || "Unknown"}</span>
+                <span>
+                  Joined {user.createdAt?.toLocaleDateString() || "Unknown"}
+                </span>
               </div>
             </div>
           </div>
@@ -399,7 +532,9 @@ export default function UserDetailPage() {
         {/* Chat History Section */}
         <div className="mb-6">
           <h2 className="text-2xl font-bold text-gray-900">Chat History</h2>
-          <p className="text-gray-500">View all conversations with AI and human advisors</p>
+          <p className="text-gray-500">
+            View all conversations with AI and human advisors
+          </p>
         </div>
 
         {/* Chat Stats */}
@@ -409,7 +544,9 @@ export default function UserDetailPage() {
               <MessageSquare className="w-6 h-6 text-blue-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{chatRooms.length}</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {chatRooms.length}
+              </p>
               <p className="text-sm text-gray-500">Total Conversations</p>
             </div>
           </div>
@@ -419,7 +556,9 @@ export default function UserDetailPage() {
               <Bot className="w-6 h-6 text-purple-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{chatRooms.filter(r => r.type === "ai").length}</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {chatRooms.filter((r) => r.type === "ai").length}
+              </p>
               <p className="text-sm text-gray-500">AI Conversations</p>
             </div>
           </div>
@@ -429,7 +568,9 @@ export default function UserDetailPage() {
               <UserCheck className="w-6 h-6 text-green-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{chatRooms.filter(r => r.type === "human").length}</p>
+              <p className="text-2xl font-bold text-gray-900">
+                {chatRooms.filter((r) => r.type === "human").length}
+              </p>
               <p className="text-sm text-gray-500">Human Advisor Chats</p>
             </div>
           </div>
@@ -440,23 +581,32 @@ export default function UserDetailPage() {
           {chatRooms.length === 0 ? (
             <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
               <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-700">No Chat History</h3>
-              <p className="text-gray-500 mt-2">This user hasn't started any conversations yet.</p>
+              <h3 className="text-lg font-medium text-gray-700">
+                No Chat History
+              </h3>
+              <p className="text-gray-500 mt-2">
+                This user hasn't started any conversations yet.
+              </p>
             </div>
           ) : (
             chatRooms.map((room) => (
-              <div key={room.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+              <div
+                key={room.id}
+                className="bg-white rounded-2xl border border-gray-100 overflow-hidden"
+              >
                 {/* Room Header */}
                 <button
                   onClick={() => toggleRoom(room.id)}
                   className="w-full p-5 flex items-center justify-between hover:bg-gray-50 transition"
                 >
                   <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                      room.type === "ai" 
-                        ? "bg-gradient-to-br from-purple-500 to-purple-600 shadow-lg shadow-purple-500/30" 
-                        : "bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg shadow-green-500/30"
-                    }`}>
+                    <div
+                      className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                        room.type === "ai"
+                          ? "bg-gradient-to-br from-purple-500 to-purple-600 shadow-lg shadow-purple-500/30"
+                          : "bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg shadow-green-500/30"
+                      }`}
+                    >
                       {room.type === "ai" ? (
                         <Bot className="w-6 h-6 text-white" />
                       ) : (
@@ -466,19 +616,26 @@ export default function UserDetailPage() {
                     <div className="text-left">
                       <div className="flex items-center gap-2">
                         <h3 className="font-semibold text-gray-900">
-                          {room.type === "ai" ? "AI Assistant" : room.advisorName || "Human Advisor"}
+                          {room.type === "ai"
+                            ? "AI Assistant"
+                            : room.advisorName || "Human Advisor"}
                         </h3>
-                        <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
-                          room.status === "completed" || room.status === "ended"
-                            ? "bg-gray-100 text-gray-600"
-                            : room.status === "active"
-                            ? "bg-green-100 text-green-600"
-                            : "bg-yellow-100 text-yellow-600"
-                        }`}>
+                        <span
+                          className={`px-2 py-0.5 text-xs font-medium rounded-full ${
+                            room.status === "completed" ||
+                            room.status === "ended"
+                              ? "bg-gray-100 text-gray-600"
+                              : room.status === "active"
+                              ? "bg-green-100 text-green-600"
+                              : "bg-yellow-100 text-yellow-600"
+                          }`}
+                        >
                           {room.status}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-500 truncate max-w-md">{room.lastMessage}</p>
+                      <p className="text-sm text-gray-500 truncate max-w-md">
+                        {room.lastMessage}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
@@ -507,31 +664,44 @@ export default function UserDetailPage() {
                       {room.messages.map((message) => (
                         <div
                           key={message.id}
-                          className={`flex ${message.senderType === "user" ? "justify-end" : "justify-start"}`}
+                          className={`flex ${
+                            message.senderType === "user"
+                              ? "justify-end"
+                              : "justify-start"
+                          }`}
                         >
                           <div
                             className={`max-w-[70%] rounded-2xl px-4 py-3 ${
                               message.senderType === "user"
-                                ? "bg-blue-500 text-white rounded-br-md"
-                                : message.senderType === "ai"
+                                ? "bg-[#eee] text-black rounded-br-md"
+                                : room.type === "ai"
                                 ? "bg-purple-100 text-purple-900 rounded-bl-md"
-                                : "bg-white text-gray-800 border border-gray-200 rounded-bl-md"
+                                : "bg-green-100 text-green-900 rounded-bl-md"
                             }`}
                           >
-                            <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                            {message.isAudioMessage && message.transcription && (
-                              <p className="text-xs mt-2 opacity-75 italic">
-                                🎤 {message.transcription}
-                              </p>
-                            )}
+                            <p className="text-sm whitespace-pre-wrap">
+                              {message.content}
+                            </p>
+                            {message.isAudioMessage &&
+                              message.transcription && (
+                                <p className="text-xs mt-2 opacity-75 italic">
+                                  🎤 {message.transcription}
+                                </p>
+                              )}
                             {message.file && (
                               <div className="mt-2 text-xs opacity-75">
                                 📎 {message.file.name || "Attachment"}
                               </div>
                             )}
-                            <p className={`text-xs mt-1 ${
-                              message.senderType === "user" ? "text-blue-200" : "text-gray-400"
-                            }`}>
+                            <p
+                              className={`text-xs mt-1 ${
+                                message.senderType === "user"
+                                  ? "text-blue-600"
+                                  : room.type === "ai"
+                                  ? "text-purple-600"
+                                  : "text-green-600"
+                              }`}
+                            >
                               {formatDate(message.createdAt)}
                             </p>
                           </div>
