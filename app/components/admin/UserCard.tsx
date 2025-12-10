@@ -18,7 +18,7 @@ export default function UserCard({ user }: UserCardProps) {
   return (
     <div 
       onClick={handleClick}
-      className="bg-white rounded-2xl border border-gray-100 p-5 hover:border-blue-200 hover:shadow-lg transition-all duration-300 group cursor-pointer"
+      className="bg-white rounded-2xl border border-gray-100 p-5 shadow hover:border-blue-200 hover:shadow-lg transition-all duration-300 group cursor-pointer"
     >
       <div className="flex items-center gap-5">
         {/* User Avatar */}
@@ -26,7 +26,6 @@ export default function UserCard({ user }: UserCardProps) {
           <div className="w-16 h-16 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-500/30 group-hover:shadow-blue-500/40 transition-shadow">
             <UserIcon className="w-7 h-7" />
           </div>
-          <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${user.hasClaimedFreeCash ? "bg-green-400" : "bg-gray-300"}`} />
         </div>
 
         {/* User Details */}
@@ -61,7 +60,7 @@ export default function UserCard({ user }: UserCardProps) {
             {/* Join Date */}
             <div className="flex items-center gap-2 text-gray-400">
               <Calendar className="w-4 h-4" />
-              <span>{user.createdAt?.toLocaleDateString() || "Unknown"}</span>
+              <span>{user.createdAt.toLocaleString() || "Unknown"}</span>
             </div>
           </div>
         </div>
@@ -82,7 +81,7 @@ export default function UserCard({ user }: UserCardProps) {
             <div className="flex flex-col">
               <span className="text-xs text-green-600/70 font-medium">Balance</span>
               <span className="text-green-700 font-bold text-lg leading-tight">
-                ₹{user.walletBalance?.toLocaleString() ?? "0"}
+                ₹{user.walletBalance ? (user.walletBalance/100).toLocaleString() : "0"}
               </span>
             </div>
           </div>

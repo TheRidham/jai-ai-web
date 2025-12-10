@@ -243,26 +243,29 @@ export default function UserDetailPage() {
         console.log("Error checking chatRooms collection:", error);
       }
 
-      // Also fetch AI chat history from chatHistory collection
-      // Structure: chatHistory/{visitorId}/chats/{chatId} with messages array
+      // Fetch AI chat history from aichathistory collection
+      // Structure: aichathistory/{chatId} with userId, advisorName, advisorCategory, messages array, timestamp, title, lastMessage
       try {
-        console.log("Fetching AI chats from chatHistory for userId:", userId);
+        console.log("Fetching AI chats from aichathistory for userId:", userId);
 
-        // The document ID in chatHistory is the visitorId/visitorUserId
-        // First, try direct access with userId as the document ID
-        const chatHistoryRef = collection(db, `chatHistory/${userId}/chats`);
-        const aiChatsSnapshot = await getDocs(chatHistoryRef);
+        // Query aichathistory collection for documents matching this userId
+        const aiChatHistoryRef = collection(db, "aichathistory");
+        const aiChatsSnapshot = await getDocs(aiChatHistoryRef);
 
         console.log(
-          "AI chats found in chatHistory:",
+          "Total AI chats found in aichathistory:",
           aiChatsSnapshot.docs.length
         );
 
         for (const chatDoc of aiChatsSnapshot.docs) {
           const chatData = chatDoc.data();
+          
+          // Only include chats that belong to this user
+          if (chatData.userId !== userId) continue;
+          
           console.log("Chat data:", chatDoc.id, chatData);
 
-          // Messages are stored as an array in the document, not as a subcollection
+          // Messages are stored as an array in the document
           const messagesArray = chatData.messages || [];
 
           const messages: ChatMessage[] = messagesArray.map(
@@ -270,7 +273,7 @@ export default function UserDetailPage() {
               id: msg.id || String(index),
               content: msg.text || msg.content || "",
               senderType: msg.from === "bot" ? "ai" : "user",
-              createdAt: msg.timestamp || chatData.createdAt,
+              createdAt: msg.timestamp || chatData.timestamp,
             })
           );
 
@@ -281,7 +284,7 @@ export default function UserDetailPage() {
               advisorName: chatData.advisorName || "AI Assistant",
               type: "ai",
               status: "completed",
-              createdAt: chatData.createdAt || chatData.timestamp,
+              createdAt: chatData.timestamp,
               lastMessage:
                 chatData.lastMessage ||
                 messages[messages.length - 1]?.content ||
@@ -292,78 +295,7 @@ export default function UserDetailPage() {
           }
         }
       } catch (error) {
-        console.log("Error fetching from chatHistory collection:", error);
-      }
-
-      // If no chats found yet, also try to check all chatHistory documents
-      // in case the userId is stored differently
-      if (rooms.length === 0) {
-        try {
-          console.log("Checking all chatHistory documents...");
-          const allChatHistorySnapshot = await getDocs(
-            collection(db, "chatHistory")
-          );
-
-          for (const historyDoc of allChatHistorySnapshot.docs) {
-            console.log("Checking chatHistory document:", historyDoc.id);
-
-            // Check if this document's ID matches the userId
-            // or if it has a visitorUserId field that matches
-            const historyData = historyDoc.data();
-            const isUserMatch =
-              historyDoc.id === userId ||
-              historyData.visitorUserId === userId ||
-              historyData.userId === userId;
-
-            if (isUserMatch || rooms.length === 0) {
-              // Fetch chats subcollection
-              const chatsSnapshot = await getDocs(
-                collection(db, `chatHistory/${historyDoc.id}/chats`)
-              );
-
-              console.log(
-                `Chats in ${historyDoc.id}:`,
-                chatsSnapshot.docs.length
-              );
-
-              for (const chatDoc of chatsSnapshot.docs) {
-                const chatData = chatDoc.data();
-                const messagesArray = chatData.messages || [];
-
-                const messages: ChatMessage[] = messagesArray.map(
-                  (msg: { id?: string; text?: string; content?: string; from?: string; timestamp?: Timestamp | Date }, index: number) => ({
-                    id: msg.id || String(index),
-                    content: msg.text || msg.content || "",
-                    senderType: msg.from === "bot" ? "ai" : "user",
-                    createdAt: msg.timestamp || chatData.createdAt,
-                  })
-                );
-
-                if (
-                  messages.length > 0 &&
-                  !rooms.find((r) => r.id === chatDoc.id)
-                ) {
-                  rooms.push({
-                    id: chatDoc.id,
-                    roomId: chatDoc.id,
-                    advisorName: chatData.advisorName || "AI Assistant",
-                    type: "ai",
-                    status: "completed",
-                    createdAt: chatData.createdAt || chatData.timestamp,
-                    lastMessage:
-                      chatData.lastMessage ||
-                      messages[messages.length - 1]?.content ||
-                      "No messages",
-                    messageCount: messages.length,
-                    messages,
-                  });
-                }
-              }
-            }
-          }
-        } catch (error) {
-          console.log("Error checking all chatHistory documents:", error);
-        }
+        console.log("Error fetching from aichathistory collection:", error);
       }
 
       console.log("Total rooms found for user:", rooms.length);
@@ -488,7 +420,7 @@ export default function UserDetailPage() {
                   <div>
                     <p className="text-xs text-gray-500">Wallet Balance</p>
                     <p className="text-sm font-bold text-green-600">
-                      ₹{user.walletBalance?.toLocaleString() || "0"}
+                      ₹{user.walletBalance ? (user.walletBalance / 100).toLocaleString() : "0"}
                     </p>
                   </div>
                 </div>

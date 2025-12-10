@@ -1,21 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, orderBy, query } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import UserCard from "@/app/components/admin/UserCard";
 import { User } from "@/types/user";
-import { Users, Wallet, Gift, TrendingUp } from "lucide-react";
+import { Users, Wallet, Gift, TrendingUp, ArrowUpDown, ChevronDown } from "lucide-react";
 
 export default function Analysis() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
 
   useEffect(() => {
     const fetchUsers = async () => {
       try {
         const usersCollection = collection(db, "users");
-        const usersSnapshot = await getDocs(usersCollection);
+        const usersQuery = query(usersCollection, orderBy("createdAt", "desc"));
+        const usersSnapshot = await getDocs(usersQuery);
         const usersData = usersSnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
@@ -33,8 +35,15 @@ export default function Analysis() {
     fetchUsers();
   }, []);
 
+  // Sort users based on sortOrder
+  const sortedUsers = [...users].sort((a, b) => {
+    const dateA = new Date(a.createdAt).getTime();
+    const dateB = new Date(b.createdAt).getTime();
+    return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
+  });
+
   // Calculate stats
-  const totalWalletBalance = users.reduce((sum, user) => sum + (user.walletBalance || 0), 0);
+  const totalWalletBalance = users.reduce((sum, user) => sum + (user.walletBalance / 100 || 0), 0);
   const claimedFreeCash = users.filter((user) => user.hasClaimedFreeCash).length;
 
   if (loading) {
@@ -107,8 +116,8 @@ export default function Analysis() {
             </div>
             <div className="mt-4">
               <div className="w-full bg-gray-100 rounded-full h-2">
-                <div 
-                  className="bg-gradient-to-r from-purple-500 to-purple-600 h-2 rounded-full transition-all" 
+                <div
+                  className="bg-gradient-to-r from-purple-500 to-purple-600 h-2 rounded-full transition-all"
                   style={{ width: `${users.length > 0 ? (claimedFreeCash / users.length) * 100 : 0}%` }}
                 />
               </div>
@@ -137,15 +146,33 @@ export default function Analysis() {
           </div>
         </div>
 
-        {/* Users Section */}
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold text-gray-800">All Users</h2>
-          <p className="text-gray-500 text-sm">Showing {users.length} registered users</p>
+        {/* Users Section Header with Filter */}
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-800">All Users</h2>
+            <p className="text-gray-500 text-sm">Showing {users.length} registered users</p>
+          </div>
+
+          {/* Sort Filter */}
+          <div className="relative">
+            <div className="flex items-center gap-2">
+              <ArrowUpDown className="w-4 h-4 text-gray-500" />
+              <select
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value as "desc" | "asc")}
+                className="appearance-none bg-white border border-gray-200 rounded-lg px-4 py-2 pr-10 text-sm font-medium text-gray-700 cursor-pointer hover:border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              >
+                <option value="desc">Newest First</option>
+                <option value="asc">Oldest First</option>
+              </select>
+              <ChevronDown className="w-4 h-4 text-gray-400 absolute right-3 pointer-events-none" />
+            </div>
+          </div>
         </div>
 
         {/* Users List */}
         <div className="flex flex-col gap-4">
-          {users.map((user) => (
+          {sortedUsers.map((user) => (
             <UserCard key={user.id} user={user} />
           ))}
         </div>
