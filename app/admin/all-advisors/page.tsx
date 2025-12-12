@@ -11,7 +11,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { LogOut, Trash2, User, Mail, Phone, Loader2, Pencil } from "lucide-react";
+import { LogOut, Trash2, User, Mail, Phone, Loader2, Pencil, ChartNoAxesColumnIncreasing } from "lucide-react";
 import Image from "next/image";
 import AdvisorProfileForm, {
   AdvisorFormSubmitPayload,
@@ -262,13 +262,22 @@ export default function AllAdvisors() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <h1 className="text-2xl font-bold text-blue-600">Admin Dashboard</h1>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-            >
-              <LogOut size={18} />
-              Logout
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => router.push("/admin/analysis")}
+                className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+              >
+              <ChartNoAxesColumnIncreasing size={18} /> 
+                Analysis
+              </button>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+              >
+                <LogOut size={18} />
+                Logout
+              </button>
+            </div>
           </div>
         </div>
       </header>
