@@ -7,10 +7,19 @@ import UserCard from "@/app/components/admin/UserCard";
 import { User } from "@/types/user";
 import { Users, Wallet, Gift, TrendingUp, ArrowUpDown, ChevronDown } from "lucide-react";
 
+export interface UserChatStats {
+  totalConversations: number;
+  aiChats: number;
+  humanAdvisorChats: number;
+  aiAdvisorStats?: Record<string, number>; // advisorName -> count
+}
+
 export default function Analysis() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
+  const [userChatStats, setUserChatStats] = useState<Record<string, UserChatStats>>({});
+  const [overallAiAdvisorStats, setOverallAiAdvisorStats] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -32,7 +41,54 @@ export default function Analysis() {
       }
     };
 
+
+    const fetchUserChatStats = async () => {
+      try {
+        const statsMap: Record<string, UserChatStats> = {};
+        const overallAdvisorMap: Record<string, number> = {};
+
+        // Fetch chat requests (human advisor chats)
+        const chatRequestsSnapshot = await getDocs(collection(db, "chatRequests"));
+        chatRequestsSnapshot.docs.forEach((doc) => {
+          const data = doc.data();
+          const userId = data.userId;
+          if (userId && data.advisorId) {
+            if (!statsMap[userId]) {
+              statsMap[userId] = { totalConversations: 0, aiChats: 0, humanAdvisorChats: 0, aiAdvisorStats: {} };
+            }
+            statsMap[userId].humanAdvisorChats++;
+            statsMap[userId].totalConversations++;
+          }
+        });
+
+        // Fetch AI chat history
+        const aiChatHistorySnapshot = await getDocs(collection(db, "aichathistory"));
+        aiChatHistorySnapshot.docs.forEach((doc) => {
+          const data = doc.data();
+          const userId = data.userId;
+          const advisorName = data.advisorName || "AI Assistant";
+          if (userId) {
+            if (!statsMap[userId]) {
+              statsMap[userId] = { totalConversations: 0, aiChats: 0, humanAdvisorChats: 0, aiAdvisorStats: {} };
+            }
+            statsMap[userId].aiChats++;
+            statsMap[userId].totalConversations++;
+            if (!statsMap[userId].aiAdvisorStats) statsMap[userId].aiAdvisorStats = {};
+            statsMap[userId].aiAdvisorStats[advisorName] = (statsMap[userId].aiAdvisorStats[advisorName] || 0) + 1;
+            // Overall advisor stats
+            overallAdvisorMap[advisorName] = (overallAdvisorMap[advisorName] || 0) + 1;
+          }
+        });
+
+        setUserChatStats(statsMap);
+        setOverallAiAdvisorStats(overallAdvisorMap);
+      } catch (error) {
+        console.error("Error fetching user chat stats:", error);
+      }
+    };
+
     fetchUsers();
+    fetchUserChatStats();
   }, []);
 
   // Sort users based on sortOrder
@@ -146,6 +202,21 @@ export default function Analysis() {
           </div>
         </div>
 
+        {/* Overall AI Advisor Chat Stats */}
+        {overallAiAdvisorStats && Object.keys(overallAiAdvisorStats).length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-lg font-semibold text-gray-800 mb-2">AI Advisor Chat Stats (All Users)</h2>
+            <div className="flex flex-wrap gap-3">
+              {Object.entries(overallAiAdvisorStats).map(([advisor, count]) => (
+                <span key={advisor} className="flex items-center gap-1 bg-purple-50 px-3 py-1 rounded-full text-sm text-purple-700">
+                  <span className="font-medium">{advisor}</span>
+                  <span>({count})</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Users Section Header with Filter */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -173,7 +244,11 @@ export default function Analysis() {
         {/* Users List */}
         <div className="flex flex-col gap-4">
           {sortedUsers.map((user) => (
-            <UserCard key={user.id} user={user} />
+            <UserCard 
+              key={user.id} 
+              user={user} 
+              chatStats={userChatStats[user.id] || { totalConversations: 0, aiChats: 0, humanAdvisorChats: 0, aiAdvisorStats: {} }}
+            />
           ))}
         </div>
 

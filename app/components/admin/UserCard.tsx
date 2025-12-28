@@ -1,14 +1,22 @@
 "use client";
 
 import { User } from "@/types/user";
-import { User as UserIcon, Phone, Mail, Wallet, Gift, Calendar, ChevronRight } from "lucide-react";
+import { User as UserIcon, Phone, Mail, Wallet, Gift, Calendar, ChevronRight, MessageSquare, Bot, UserCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
+
+interface ChatStats {
+  totalConversations: number;
+  aiChats: number;
+  humanAdvisorChats: number;
+  aiAdvisorStats?: Record<string, number>;
+}
 
 interface UserCardProps {
   user: User;
+  chatStats?: ChatStats;
 }
 
-export default function UserCard({ user }: UserCardProps) {
+export default function UserCard({ user, chatStats }: UserCardProps) {
   const router = useRouter();
 
   const handleClick = () => {
@@ -44,7 +52,8 @@ export default function UserCard({ user }: UserCardProps) {
           </div>
 
           {/* Info Grid */}
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+          <div>
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm mb-4">
             {/* Email */}
             <div className="flex items-center gap-2 text-gray-500">
               <Mail className="w-4 h-4 text-gray-400" />
@@ -62,6 +71,42 @@ export default function UserCard({ user }: UserCardProps) {
               <Calendar className="w-4 h-4" />
               <span>{user.createdAt.toLocaleString() || "Unknown"}</span>
             </div>
+            </div>
+
+            {/* Chat Stats */}
+            {chatStats && (
+              <div className="flex flex-col gap-1 mt-2">
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+                  <div className="flex items-center gap-1.5 text-gray-500">
+                    <MessageSquare className="w-4 h-4 text-indigo-500" />
+                    <span className="font-medium">{chatStats.totalConversations}</span>
+                    <span className="text-gray-400">chats</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-gray-500">
+                    <Bot className="w-4 h-4 text-purple-500" />
+                    <span className="font-medium">{chatStats.aiChats}</span>
+                    <span className="text-gray-400">AI</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-gray-500">
+                    <UserCheck className="w-4 h-4 text-teal-500" />
+                    <span className="font-medium">{chatStats.humanAdvisorChats}</span>
+                    <span className="text-gray-400">Human</span>
+                  </div>
+                </div>
+                {/* Per-AI advisor stats */}
+                {chatStats.aiAdvisorStats && Object.keys(chatStats.aiAdvisorStats).length > 0 && (
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs mt-1 text-gray-600">
+                    {Object.entries(chatStats.aiAdvisorStats).map(([advisor, count]) => (
+                      <span key={advisor} className="flex items-center gap-1 bg-purple-50 px-2 py-0.5 rounded-full">
+                        <Bot className="w-3 h-3 text-purple-400" />
+                        <span className="font-medium">{advisor}</span>
+                        <span className="text-purple-700">({count})</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
