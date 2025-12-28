@@ -1,24 +1,35 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { auth, db } from "@/lib/firebase";
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { auth, db, storage } from "@/lib/firebase";
+import { onAuthStateChanged, signOut, signInWithEmailAndPassword } from "firebase/auth";
 import {
   collection,
   getDocs,
   deleteDoc,
   doc,
+  updateDoc,
 } from "firebase/firestore";
-import { LogOut, Trash2, User, Mail, Phone, Loader2, ChartNoAxesColumnIncreasing } from "lucide-react";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { LogOut, Trash2, User, Mail, Phone, Loader2, Pencil, ChartNoAxesColumnIncreasing } from "lucide-react";
 import Image from "next/image";
+import AdvisorProfileForm, {
+  AdvisorFormSubmitPayload,
+} from "@/app/components/AdvisorProfileForm";
 
 interface Advisor {
   id: string;
+  uid?: string;
   name?: string;
+  age?: string | number;
+  experience?: string | number;
+  degree?: string;
+  certification?: string;
   email?: string;
   phone?: string;
   specialization?: string[];
   profilePhoto?: string;
+  password?: string;
   [key: string]: unknown;
 }
 
@@ -27,6 +38,12 @@ export default function AllAdvisors() {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [impersonating, setImpersonating] = useState<string | null>(null);
+  const [editingAdvisor, setEditingAdvisor] = useState<Advisor | null>(null);
+  const [editFeedback, setEditFeedback] = useState<
+    { text: string; variant: "success" | "error" | "info" }
+  | null>(null);
+  const [updating, setUpdating] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -87,6 +104,149 @@ export default function AllAdvisors() {
       setDeleting(null);
     }
   };
+
+  const handleLoginAsAdvisor = async (advisor: Advisor) => {
+    if (!advisor.email) {
+      alert("Advisor is missing an email address. Unable to impersonate.");
+      return;
+    }
+
+    // if (!advisor.password || typeof advisor.password !== "string") {
+    //   alert("Advisor is missing a password. Please add one before impersonating.");
+    //   return;
+    // }
+
+    setImpersonating(advisor.id);
+    try {
+      await signInWithEmailAndPassword(
+        auth,
+        advisor.email,
+        advisor.password ?? "123456"
+      );
+      router.push("/advisor/dashboard");
+    } catch (error) {
+      console.error("Error impersonating advisor:", error);
+      alert("Failed to log in as advisor. Please verify the temporary password and try again.");
+    } finally {
+      setImpersonating(null);
+    }
+  };
+
+  const handleStartEditing = (advisor: Advisor) => {
+    setEditingAdvisor(advisor);
+    setEditFeedback(null);
+  };
+
+  const handleUpdateAdvisor = async (payload: AdvisorFormSubmitPayload) => {
+    if (!editingAdvisor) {
+      return;
+    }
+
+    if (payload.specialization.length === 0) {
+      setEditFeedback({
+        text: "Please select at least one specialization before saving.",
+        variant: "error",
+      });
+      return;
+    }
+
+    const hasPasswordInput = payload.password || payload.confirmPassword;
+    if (hasPasswordInput && payload.password !== payload.confirmPassword) {
+      setEditFeedback({
+        text: "Passwords do not match. Please re-enter.",
+        variant: "error",
+      });
+      return;
+    }
+
+    if (payload.password && payload.password.length < 6) {
+      setEditFeedback({
+        text: "Password must be at least 6 characters long.",
+        variant: "error",
+      });
+      return;
+    }
+
+    setUpdating(true);
+    setEditFeedback(null);
+
+    try {
+      let formattedPhone = payload.phone;
+      if (formattedPhone && !formattedPhone.startsWith("+")) {
+        formattedPhone = `+${formattedPhone}`;
+      }
+
+      let profilePhotoUrl = payload.profilePhoto;
+      if (payload.photoFile) {
+        const storageRef = ref(
+          storage,
+          `profilePhotos/${payload.photoFile.name}-${Date.now()}`
+        );
+        await uploadBytes(storageRef, payload.photoFile);
+        profilePhotoUrl = await getDownloadURL(storageRef);
+      }
+
+      const passwordToPersist =
+        payload.password ||
+        (typeof editingAdvisor.password === "string"
+          ? editingAdvisor.password
+          : "");
+
+      const updatedData: Record<string, unknown> = {
+        name: payload.name,
+        age: payload.age,
+        experience: payload.experience,
+        degree: payload.degree,
+        specialization: payload.specialization,
+        certification: payload.certification,
+        email: payload.email,
+        phone: formattedPhone,
+        profilePhoto: profilePhotoUrl,
+      };
+
+      if (passwordToPersist) {
+        updatedData.password = passwordToPersist;
+      }
+
+      await updateDoc(doc(db, "advisors", editingAdvisor.id), updatedData);
+
+      setAdvisors((prev) =>
+        prev.map((advisor) =>
+          advisor.id === editingAdvisor.id
+            ? {
+                ...advisor,
+                ...updatedData,
+              }
+            : advisor
+        )
+      );
+
+      setEditingAdvisor(null);
+    } catch (error) {
+      console.error("Error updating advisor:", error);
+      setEditFeedback({
+        text: "Failed to update advisor. Please try again.",
+        variant: "error",
+      });
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const handleCloseEditor = () => {
+    if (updating) {
+      return;
+    }
+    setEditingAdvisor(null);
+    setEditFeedback(null);
+  };
+
+  const toInputString = (value: unknown) =>
+    typeof value === "string"
+      ? value
+      : value === undefined || value === null
+      ? ""
+      : String(value);
 
   if (!authChecked) {
     return (
@@ -152,7 +312,16 @@ export default function AllAdvisors() {
             {advisors.map((advisor) => (
               <div
                 key={advisor.id}
-                className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow"
+                className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+                onClick={() => handleLoginAsAdvisor(advisor)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    handleLoginAsAdvisor(advisor);
+                  }
+                }}
               >
                 <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-4">
                   <div className="flex items-center gap-4">
@@ -197,9 +366,22 @@ export default function AllAdvisors() {
                   )}
                 </div>
 
-                <div className="px-4 pb-4">
+                <div className="px-4 pb-4 space-y-2">
                   <button
-                    onClick={() => handleDeleteAdvisor(advisor.id)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleStartEditing(advisor);
+                    }}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                  >
+                    <Pencil size={16} />
+                    Edit Advisor
+                  </button>
+                  <button
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleDeleteAdvisor(advisor.id);
+                    }}
                     disabled={deleting === advisor.id}
                     className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
@@ -215,12 +397,78 @@ export default function AllAdvisors() {
                       </>
                     )}
                   </button>
+                  {impersonating === advisor.id && (
+                    <p className="text-center text-sm text-blue-500">Logging in as advisor...</p>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         )}
       </main>
+
+      {editingAdvisor && (
+        <div
+          className="fixed overflow-y-scroll h-screen top-0 left-0 w-full bg-black/30 backdrop-blur-sm flex items-center justify-center px-4 py-8 z-50"
+          onClick={handleCloseEditor}
+        >
+          <div
+            className="w-full max-w-3xl h-full"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <AdvisorProfileForm
+              mode="edit"
+              initialValues={{
+                name: toInputString(editingAdvisor.name),
+                age: toInputString(editingAdvisor.age),
+                experience: toInputString(editingAdvisor.experience),
+                degree: toInputString(editingAdvisor.degree),
+                specialization: Array.isArray(editingAdvisor.specialization)
+                  ? editingAdvisor.specialization.filter(
+                      (item): item is string => typeof item === "string"
+                    )
+                  : [],
+                certification: toInputString(editingAdvisor.certification),
+                email: toInputString(editingAdvisor.email),
+                phone: toInputString(editingAdvisor.phone),
+                password:
+                  typeof editingAdvisor.password === "string"
+                    ? editingAdvisor.password
+                    : "",
+                confirmPassword:
+                  typeof editingAdvisor.password === "string"
+                    ? editingAdvisor.password
+                    : "",
+                profilePhoto:
+                  typeof editingAdvisor.profilePhoto === "string"
+                    ? editingAdvisor.profilePhoto
+                    : "",
+              }}
+              onSubmit={handleUpdateAdvisor}
+              loading={updating}
+              message={editFeedback?.text ?? null}
+              messageVariant={editFeedback?.variant ?? "info"}
+              submitLabel="Save Changes"
+              loadingLabel="Saving..."
+              heading="Edit Advisor Profile"
+              subheading="Update the advisor information and save your changes."
+              footerContent={
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleCloseEditor}
+                    className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                    disabled={updating}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              }
+              formClassName="bg-white rounded-2xl shadow-xl w-full p-6 space-y-6 border border-gray-100"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
