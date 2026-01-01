@@ -5,7 +5,16 @@ import { collection, getDocs, orderBy, query } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import UserCard from "@/app/components/admin/UserCard";
 import { User } from "@/types/user";
-import { Users, Wallet, Gift, TrendingUp, ArrowUpDown, ChevronDown } from "lucide-react";
+import {
+  Users,
+  Wallet,
+  Gift,
+  TrendingUp,
+  ArrowUpDown,
+  ChevronDown,
+  MessageSquare,
+  MessagesSquare
+} from "lucide-react";
 
 export interface UserChatStats {
   totalConversations: number;
@@ -18,8 +27,14 @@ export default function Analysis() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
-  const [userChatStats, setUserChatStats] = useState<Record<string, UserChatStats>>({});
-  const [overallAiAdvisorStats, setOverallAiAdvisorStats] = useState<Record<string, number>>({});
+  const [userChatStats, setUserChatStats] = useState<
+    Record<string, UserChatStats>
+  >({});
+  const [overallAiAdvisorStats, setOverallAiAdvisorStats] = useState<
+    Record<string, number>
+  >({});
+  const [totalChats, setTotalChats] = useState<number>(0);
+  const [totalMessages, setTotalMessages] = useState<number>(0);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -41,47 +56,82 @@ export default function Analysis() {
       }
     };
 
-
     const fetchUserChatStats = async () => {
       try {
         const statsMap: Record<string, UserChatStats> = {};
         const overallAdvisorMap: Record<string, number> = {};
+        let total = 0;
+        let messageCount = 0;
 
         // Fetch chat requests (human advisor chats)
-        const chatRequestsSnapshot = await getDocs(collection(db, "chatRequests"));
-        chatRequestsSnapshot.docs.forEach((doc) => {
-          const data = doc.data();
+        const chatRequestsSnapshot = await getDocs(
+          collection(db, "chatRequests")
+        );
+        for (const docSnap of chatRequestsSnapshot.docs) {
+          const data = docSnap.data();
           const userId = data.userId;
-          if (userId && data.advisorId) {
+          if (userId && data.advisorId && data.roomId) {
             if (!statsMap[userId]) {
-              statsMap[userId] = { totalConversations: 0, aiChats: 0, humanAdvisorChats: 0, aiAdvisorStats: {} };
+              statsMap[userId] = {
+                totalConversations: 0,
+                aiChats: 0,
+                humanAdvisorChats: 0,
+                aiAdvisorStats: {},
+              };
             }
             statsMap[userId].humanAdvisorChats++;
             statsMap[userId].totalConversations++;
+            total++;
+            // Count messages in this chat room
+            try {
+              const messagesSnapshot = await getDocs(
+                collection(db, `chatRooms/${data.roomId}/messages`)
+              );
+              messageCount += messagesSnapshot.size;
+            } catch (e) {
+              // ignore errors for missing rooms
+            }
           }
-        });
+        }
 
         // Fetch AI chat history
-        const aiChatHistorySnapshot = await getDocs(collection(db, "aichathistory"));
+        const aiChatHistorySnapshot = await getDocs(
+          collection(db, "aichathistory")
+        );
         aiChatHistorySnapshot.docs.forEach((doc) => {
           const data = doc.data();
           const userId = data.userId;
           const advisorName = data.advisorName || "AI Assistant";
           if (userId) {
             if (!statsMap[userId]) {
-              statsMap[userId] = { totalConversations: 0, aiChats: 0, humanAdvisorChats: 0, aiAdvisorStats: {} };
+              statsMap[userId] = {
+                totalConversations: 0,
+                aiChats: 0,
+                humanAdvisorChats: 0,
+                aiAdvisorStats: {},
+              };
             }
             statsMap[userId].aiChats++;
             statsMap[userId].totalConversations++;
-            if (!statsMap[userId].aiAdvisorStats) statsMap[userId].aiAdvisorStats = {};
-            statsMap[userId].aiAdvisorStats[advisorName] = (statsMap[userId].aiAdvisorStats[advisorName] || 0) + 1;
+            if (!statsMap[userId].aiAdvisorStats)
+              statsMap[userId].aiAdvisorStats = {};
+            statsMap[userId].aiAdvisorStats[advisorName] =
+              (statsMap[userId].aiAdvisorStats[advisorName] || 0) + 1;
             // Overall advisor stats
-            overallAdvisorMap[advisorName] = (overallAdvisorMap[advisorName] || 0) + 1;
+            overallAdvisorMap[advisorName] =
+              (overallAdvisorMap[advisorName] || 0) + 1;
+            total++;
+            // Count messages in this AI chat (messages is an array)
+            if (Array.isArray(data.messages)) {
+              messageCount += data.messages.length;
+            }
           }
         });
 
         setUserChatStats(statsMap);
         setOverallAiAdvisorStats(overallAdvisorMap);
+        setTotalChats(total);
+        setTotalMessages(messageCount);
       } catch (error) {
         console.error("Error fetching user chat stats:", error);
       }
@@ -99,12 +149,17 @@ export default function Analysis() {
   });
 
   // Calculate stats
-  const totalWalletBalance = users.reduce((sum, user) => sum + (user.walletBalance / 100 || 0), 0);
-  const claimedFreeCash = users.filter((user) => user.hasClaimedFreeCash).length;
+  const totalWalletBalance = users.reduce(
+    (sum, user) => sum + (user.walletBalance / 100 || 0),
+    0
+  );
+  const claimedFreeCash = users.filter(
+    (user) => user.hasClaimedFreeCash
+  ).length;
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="flex items-center justify-center min-h-screen bg-linear-to-br from-gray-50 to-gray-100">
         <div className="flex flex-col items-center gap-4">
           <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
           <p className="text-gray-500 font-medium">Loading users...</p>
@@ -114,43 +169,32 @@ export default function Analysis() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
+    <div className="min-h-screen bg-linear-to-br from-gray-50 via-white to-gray-100">
       <div className="max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-bold bg-linear-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
             User Dashboard
           </h1>
-          <p className="text-gray-500 mt-2">Manage and monitor all registered users</p>
+          <p className="text-gray-500 mt-2">
+            Manage and monitor all registered users
+          </p>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-          {/* Total Users */}
-          <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-500">Total Users</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{users.length}</p>
-              </div>
-              <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/30">
-                <Users className="w-7 h-7 text-white" />
-              </div>
-            </div>
-            <div className="mt-4 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-green-500" />
-              <span className="text-sm text-green-600 font-medium">Active</span>
-            </div>
-          </div>
-
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-2">
           {/* Total Wallet Balance */}
           <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-500">Total Balance</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">₹{totalWalletBalance.toLocaleString()}</p>
+                <p className="text-sm font-medium text-gray-500">
+                  Total Balance
+                </p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">
+                  ₹{totalWalletBalance.toLocaleString()}
+                </p>
               </div>
-              <div className="w-14 h-14 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg shadow-green-500/30">
+              <div className="w-14 h-14 bg-linear-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg shadow-green-500/30">
                 <Wallet className="w-7 h-7 text-white" />
               </div>
             </div>
@@ -163,22 +207,35 @@ export default function Analysis() {
           <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-500">Free Cash Claimed</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{claimedFreeCash}</p>
+                <p className="text-sm font-medium text-gray-500">
+                  Free Cash Claimed
+                </p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">
+                  {claimedFreeCash}
+                </p>
               </div>
-              <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/30">
+              <div className="w-14 h-14 bg-linear-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/30">
                 <Gift className="w-7 h-7 text-white" />
               </div>
             </div>
             <div className="mt-4">
               <div className="w-full bg-gray-100 rounded-full h-2">
                 <div
-                  className="bg-gradient-to-r from-purple-500 to-purple-600 h-2 rounded-full transition-all"
-                  style={{ width: `${users.length > 0 ? (claimedFreeCash / users.length) * 100 : 0}%` }}
+                  className="bg-linear-to-r from-purple-500 to-purple-600 h-2 rounded-full transition-all"
+                  style={{
+                    width: `${
+                      users.length > 0
+                        ? (claimedFreeCash / users.length) * 100
+                        : 0
+                    }%`,
+                  }}
                 />
               </div>
               <span className="text-xs text-gray-500 mt-1 block">
-                {users.length > 0 ? Math.round((claimedFreeCash / users.length) * 100) : 0}% of users
+                {users.length > 0
+                  ? Math.round((claimedFreeCash / users.length) * 100)
+                  : 0}
+                % of users
               </span>
             </div>
           </div>
@@ -187,12 +244,19 @@ export default function Analysis() {
           <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-500">Avg. Balance</p>
+                <p className="text-sm font-medium text-gray-500">
+                  Avg. Balance
+                </p>
                 <p className="text-3xl font-bold text-gray-900 mt-1">
-                  ₹{users.length > 0 ? Math.round(totalWalletBalance / users.length).toLocaleString() : 0}
+                  ₹
+                  {users.length > 0
+                    ? Math.round(
+                        totalWalletBalance / users.length
+                      ).toLocaleString()
+                    : 0}
                 </p>
               </div>
-              <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-amber-500 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/30">
+              <div className="w-14 h-14 bg-linear-to-br from-orange-500 to-amber-500 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/30">
                 <TrendingUp className="w-7 h-7 text-white" />
               </div>
             </div>
@@ -202,26 +266,96 @@ export default function Analysis() {
           </div>
         </div>
 
-        {/* Overall AI Advisor Chat Stats */}
-        {overallAiAdvisorStats && Object.keys(overallAiAdvisorStats).length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-lg font-semibold text-gray-800 mb-2">AI Advisor Chat Stats (All Users)</h2>
-            <div className="flex flex-wrap gap-3">
-              {Object.entries(overallAiAdvisorStats).map(([advisor, count]) => (
-                <span key={advisor} className="flex items-center gap-1 bg-purple-50 px-3 py-1 rounded-full text-sm text-purple-700">
-                  <span className="font-medium">{advisor}</span>
-                  <span>({count})</span>
-                </span>
-              ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+          {/* Total Users */}
+          <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-500">Total Users</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">
+                  {users.length}
+                </p>
+              </div>
+              <div className="w-14 h-14 bg-linear-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/30">
+                <Users className="w-7 h-7 text-white" />
+              </div>
+            </div>
+            <div className="mt-4 flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-green-500" />
+              <span className="text-sm text-green-600 font-medium">Active</span>
             </div>
           </div>
-        )}
+          {/* Total Overall Chats */}
+          <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-500">
+                  Total Overall Chats
+                </p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">
+                  {totalChats}
+                </p>
+              </div>
+              <div className="w-14 h-14 bg-linear-to-br from-indigo-500 to-blue-400 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                <MessageSquare className="w-7 h-7 text-white" />
+              </div>
+            </div>
+            <div className="mt-4">
+              <span className="text-sm text-gray-500">AI + Human Advisor</span>
+            </div>
+          </div>
+
+          {/* Total Overall Messages */}
+          <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-500">
+                  Total Overall Messages
+                </p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">
+                  {totalMessages}
+                </p>
+              </div>
+              <div className="w-14 h-14 bg-linear-to-br from-pink-500 to-red-400 rounded-2xl flex items-center justify-center shadow-lg shadow-pink-500/30">
+                <MessagesSquare className="w-7 h-7 text-white" />
+              </div>
+            </div>
+            <div className="mt-4">
+              <span className="text-sm text-gray-500">All chat messages</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Overall AI Advisor Chat Stats */}
+        {overallAiAdvisorStats &&
+          Object.keys(overallAiAdvisorStats).length > 0 && (
+            <div className="mb-8">
+              <h2 className="text-lg font-semibold text-gray-800 mb-2">
+                AI Advisor Chat Stats (All Users)
+              </h2>
+              <div className="flex flex-wrap gap-3">
+                {Object.entries(overallAiAdvisorStats).map(
+                  ([advisor, count]) => (
+                    <span
+                      key={advisor}
+                      className="flex items-center gap-1 bg-purple-50 px-3 py-1 rounded-full text-sm text-purple-700"
+                    >
+                      <span className="font-medium">{advisor}</span>
+                      <span>({count})</span>
+                    </span>
+                  )
+                )}
+              </div>
+            </div>
+          )}
 
         {/* Users Section Header with Filter */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-xl font-semibold text-gray-800">All Users</h2>
-            <p className="text-gray-500 text-sm">Showing {users.length} registered users</p>
+            <p className="text-gray-500 text-sm">
+              Showing {users.length} registered users
+            </p>
           </div>
 
           {/* Sort Filter */}
@@ -244,10 +378,17 @@ export default function Analysis() {
         {/* Users List */}
         <div className="flex flex-col gap-4">
           {sortedUsers.map((user) => (
-            <UserCard 
-              key={user.id} 
-              user={user} 
-              chatStats={userChatStats[user.id] || { totalConversations: 0, aiChats: 0, humanAdvisorChats: 0, aiAdvisorStats: {} }}
+            <UserCard
+              key={user.id}
+              user={user}
+              chatStats={
+                userChatStats[user.id] || {
+                  totalConversations: 0,
+                  aiChats: 0,
+                  humanAdvisorChats: 0,
+                  aiAdvisorStats: {},
+                }
+              }
             />
           ))}
         </div>
@@ -257,8 +398,12 @@ export default function Analysis() {
             <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Users className="w-10 h-10 text-gray-400" />
             </div>
-            <h3 className="text-lg font-medium text-gray-700">No users found</h3>
-            <p className="text-gray-500 mt-1">Users will appear here once they register</p>
+            <h3 className="text-lg font-medium text-gray-700">
+              No users found
+            </h3>
+            <p className="text-gray-500 mt-1">
+              Users will appear here once they register
+            </p>
           </div>
         )}
       </div>
