@@ -17,12 +17,52 @@ import {
 } from "lucide-react";
 import PieChartWithCustomizedLabel from "@/app/components/PieChart";
 
+// Category color mapping with highly distinct colors
+const CATEGORY_COLORS: Record<string, string> = {
+  "Nutrition & Diet": "#FF4136", // Bright Red
+  "Mental Health": "#0074D9", // Royal Blue
+  Lawyer: "#2ECC40", // Lime Green
+  "Sexual Health": "#FF851B", // Orange
+  relationships: "#B10DC9", // Purple
+  "General Medicine": "#39CCCC", // Teal
+  Relationship: "#F012BE", // Magenta
+  Fitness: "#01FF70", // Neon Green
+  "Career Coach": "#FFD700", // Gold
+  Astro: "#7B68EE", // Medium Slate Blue
+  Government: "#8B4513", // Saddle Brown
+  "Skin & Beauty": "#FF1493", // Deep Pink
+  Addiction: "#20B2AA", // Light Sea Green
+  "sexual health": "#DC143C", // Crimson
+  "CA Taxes": "#4B0082", // Indigo
+  addictions: "#FF6347", // Tomato
+  "skin & beauty": "#BA55D3", // Medium Orchid
+  Shopping: "#00CED1", // Dark Turquoise
+  Finance: "#32CD32", // Lime
+};
+
 export interface UserChatStats {
   totalConversations: number;
   aiChats: number;
   humanAdvisorChats: number;
   aiAdvisorStats?: Record<string, number>; // advisorName -> count
 }
+
+const normalizeAdvisorName = (name: string): string => {
+  // Convert to lowercase and trim
+  const normalized = name.toLowerCase().trim();
+  
+  // Map variations to standard names
+  const nameMap: Record<string, string> = {
+    'sexual health': 'Sexual Health',
+    'skin & beauty': 'Skin & Beauty',
+    'relationships': 'Relationship',
+    'relationship': 'Relationship',
+    'addictions': 'Addiction',
+    'addiction': 'Addiction',
+  };
+  
+  return nameMap[normalized] || name;
+};
 
 export default function Analysis() {
   const [users, setUsers] = useState<User[]>([]);
@@ -102,7 +142,8 @@ export default function Analysis() {
         aiChatHistorySnapshot.docs.forEach((doc) => {
           const data = doc.data();
           const userId = data.userId;
-          const advisorName = data.advisorName || "AI Assistant";
+          const advisorName = normalizeAdvisorName(data.advisorName) || "AI Assistant";
+          console.log(data)
           if (userId) {
             if (!statsMap[userId]) {
               statsMap[userId] = {
@@ -330,27 +371,42 @@ export default function Analysis() {
         {/* Overall AI Advisor Chat Stats */}
         {overallAiAdvisorStats &&
           Object.keys(overallAiAdvisorStats).length > 0 && (
-            <div className="mb-8">
+            <div className="mb-8 bg-white shadow-xl p-2 rounded-lg">
               <h2 className="text-lg font-semibold text-gray-800 mb-2">
                 AI Advisor Chat Stats (All Users)
               </h2>
               <div className=" flex gap-4 items-center">
                 <div>
-                  <div className="flex flex-wrap gap-3">
+                  <div className="flex flex-wrap w-xl gap-3">
                     {Object.entries(overallAiAdvisorStats).map(
-                      ([advisor, count]) => (
-                        <span
-                          key={advisor}
-                          className="flex items-center gap-1 bg-purple-50 px-3 py-1 rounded-full text-sm text-purple-700"
-                        >
-                          <span className="font-medium">{advisor}</span>
-                          <span>({count})</span>
-                        </span>
-                      )
+                      ([advisor, count]) => {
+                        const color = CATEGORY_COLORS[advisor] || "#6B7280";
+                        return (
+                          <span
+                            key={advisor}
+                            className="flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium"
+                            style={{
+                              backgroundColor: `${color}20`,
+                              color: color,
+                              border: `1px solid ${color}40`,
+                            }}
+                          >
+                            <span
+                              className="w-2 h-2 rounded-full"
+                              style={{ backgroundColor: color }}
+                            />
+                            <span className="font-medium">{advisor}</span>
+                            <span>({count})</span>
+                          </span>
+                        );
+                      }
                     )}
                   </div>
                 </div>
-                <PieChartWithCustomizedLabel stats={overallAiAdvisorStats} />
+                <PieChartWithCustomizedLabel
+                  stats={overallAiAdvisorStats}
+                  categoryColors={CATEGORY_COLORS}
+                />
               </div>
             </div>
           )}

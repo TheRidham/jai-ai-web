@@ -8,7 +8,6 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-// #endregion
 const RADIAN = Math.PI / 180;
 const COLORS = [
   "#0088FE",
@@ -50,47 +49,73 @@ const COLORS = [
 ];
 
 const renderCustomizedLabel = ({
-  name,
+  cx,
+  cy,
+  midAngle,
+  innerRadius,
+  outerRadius,
   percent,
-}: {
-  name?: string;
-  percent?: number;
-}) => {
-  return `${name}: ${(percent ?? 0) * 100}%`;
+}: PieLabelRenderProps) => {
+  const radius = (outerRadius as number) + 25; // Position outside the chart
+  const x = (cx as number) + radius * Math.cos(-(midAngle as number) * RADIAN);
+  const y = (cy as number) + radius * Math.sin(-(midAngle as number) * RADIAN);
+
+  return (
+    <text
+      x={x}
+      y={y}
+      fill="#333"
+      textAnchor={x > (cx as number) ? "start" : "end"}
+      dominantBaseline="central"
+      fontSize="12"
+      fontWeight="600"
+    >
+      {`${((percent as number) * 100).toFixed(1)}%`}
+    </text>
+  );
 };
 
 export default function PieChartWithCustomizedLabel({
   isAnimationActive = true,
   stats,
+  categoryColors,
 }: {
   isAnimationActive?: boolean;
   stats: Record<string, number>;
+  categoryColors?: Record<string, string>;
 }) {
   if (!stats || Object.keys(stats).length === 0) return null;
   const data = Object.entries(stats).map(([name, value]) => ({ name, value }));
+
+  // Function to get color for a category
+  const getColor = (categoryName: string, index: number) => {
+    if (categoryColors && categoryColors[categoryName]) {
+      return categoryColors[categoryName];
+    }
+    return COLORS[index % COLORS.length];
+  };
+
   return (
     <ResponsiveContainer width="100%" height={300}>
       <PieChart>
         <Pie
           data={data}
-          labelLine={false}
+          labelLine={true}
+          label={renderCustomizedLabel}
           fill="#8884d8"
           isAnimationActive={isAnimationActive}
-          innerRadius="70%"
-          outerRadius="100%"
-          // Corner radius is the rounded edge of each pie slice
-          cornerRadius="4%"
-          // padding angle is the gap between each pie slice
-          paddingAngle={4}
+          innerRadius="55%"
+          outerRadius="75%"
+          cornerRadius="2%"
+          paddingAngle={2}
         >
           {data.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+            <Cell key={`cell-${index}`} fill={getColor(entry.name, index)} />
           ))}
         </Pie>
         <Tooltip
           formatter={(value, name) => [`${value ?? 0} chats`, String(name)]}
         />
-        {/* <Legend formatter={(value) => value as string} /> */}
       </PieChart>
     </ResponsiveContainer>
   );
