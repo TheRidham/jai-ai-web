@@ -13,8 +13,9 @@ import {
   ArrowUpDown,
   ChevronDown,
   MessageSquare,
-  MessagesSquare
+  MessagesSquare,
 } from "lucide-react";
+import PieChartWithCustomizedLabel from "@/app/components/PieChart";
 
 export interface UserChatStats {
   totalConversations: number;
@@ -333,18 +334,23 @@ export default function Analysis() {
               <h2 className="text-lg font-semibold text-gray-800 mb-2">
                 AI Advisor Chat Stats (All Users)
               </h2>
-              <div className="flex flex-wrap gap-3">
-                {Object.entries(overallAiAdvisorStats).map(
-                  ([advisor, count]) => (
-                    <span
-                      key={advisor}
-                      className="flex items-center gap-1 bg-purple-50 px-3 py-1 rounded-full text-sm text-purple-700"
-                    >
-                      <span className="font-medium">{advisor}</span>
-                      <span>({count})</span>
-                    </span>
-                  )
-                )}
+              <div className=" flex gap-4 items-center">
+                <div>
+                  <div className="flex flex-wrap gap-3">
+                    {Object.entries(overallAiAdvisorStats).map(
+                      ([advisor, count]) => (
+                        <span
+                          key={advisor}
+                          className="flex items-center gap-1 bg-purple-50 px-3 py-1 rounded-full text-sm text-purple-700"
+                        >
+                          <span className="font-medium">{advisor}</span>
+                          <span>({count})</span>
+                        </span>
+                      )
+                    )}
+                  </div>
+                </div>
+                <PieChartWithCustomizedLabel stats={overallAiAdvisorStats} />
               </div>
             </div>
           )}
