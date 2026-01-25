@@ -17,12 +17,15 @@ import { httpsCallable } from "firebase/functions";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-interface ChatRequest {
+import VideoChatRequests from "@/app/components/VideoChatRequests";
+
+export interface ChatRequest {
   id: string;
   userId: string;
   advisorId: string;
   roomId: string;
   status: "active" | "accepted" | "closed";
+  isVideo: boolean;
   createdAt: unknown;
   acceptedAt?: unknown;
   paymentMethod?: "wallet" | "razorpay";
@@ -58,6 +61,7 @@ export default function AdvisorDashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [advisor, setAdvisor] = useState<Advisor | null>(null);
   const [chatRequests, setChatRequests] = useState<ChatRequest[]>([]);
+  const [videoChatRequest, setVideoChatRequest] = useState<ChatRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
@@ -69,7 +73,6 @@ export default function AdvisorDashboard() {
         router.push("/login");
       }
     });
-
     return () => unsubscribeAuth();
   }, [router]);
 
@@ -104,14 +107,23 @@ export default function AdvisorDashboard() {
 
           unsubscribeChatRequests = onSnapshot(chatReqQuery, (snap) => {
             (async () => {
-              const requests: ChatRequest[] = [];
-              snap.forEach((d) =>
-                requests.push({ id: d.id, ...d.data() } as ChatRequest)
-              );
+              const chatReqs: ChatRequest[] = [];
+              const videoReqs: ChatRequest[] = [];
+              snap.forEach((d) => {
+                const data = d.data();
+                const request = { id: d.id, ...data } as ChatRequest;
+                if (data.isVideo === true) {
+                  videoReqs.push(request);
+                } else {
+                  chatReqs.push(request);
+                }
+              });
+
+              const allRequests = [...chatReqs, ...videoReqs];
 
               try {
                 const userIds = Array.from(
-                  new Set(requests.map((r) => r.userId).filter(Boolean))
+                  new Set(allRequests.map((r) => r.userId).filter(Boolean))
                 );
                 const usersMap: Record<string, ChatRequest["user"]> = {};
 
@@ -156,18 +168,25 @@ export default function AdvisorDashboard() {
                   }
                 }
 
-                const augmented = requests.map((r) => ({
+                const augmentedChat = chatReqs.map((r) => ({
                   ...r,
                   user: usersMap[r.userId] || null,
                 }));
 
-                setChatRequests(augmented);
+                const augmentedVideo = videoReqs.map((r) => ({
+                  ...r,
+                  user: usersMap[r.userId] || null,
+                }));
+
+                setChatRequests(augmentedChat);
+                setVideoChatRequest(augmentedVideo);
               } catch (err) {
                 console.error(
                   "Error attaching user details to chat requests",
                   err
                 );
-                setChatRequests(requests);
+                setChatRequests(chatReqs);
+                setVideoChatRequest(videoReqs);
               }
             })();
           });
@@ -348,18 +367,16 @@ export default function AdvisorDashboard() {
                     {advisor.name}
                   </h1>
                   <span
-                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
-                      advisor.busy
-                        ? "bg-red-100 text-red-700"
-                        : "bg-green-100 text-green-700"
-                    }`}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${advisor.busy
+                      ? "bg-red-100 text-red-700"
+                      : "bg-green-100 text-green-700"
+                      }`}
                   >
                     <span
-                      className={`w-2 h-2 rounded-full ${
-                        advisor.busy
-                          ? "bg-red-500"
-                          : "bg-green-500 animate-pulse"
-                      }`}
+                      className={`w-2 h-2 rounded-full ${advisor.busy
+                        ? "bg-red-500"
+                        : "bg-green-500 animate-pulse"
+                        }`}
                     ></span>
                     {advisor.busy ? "Busy" : "Available"}
                   </span>
@@ -427,11 +444,10 @@ export default function AdvisorDashboard() {
             <div className="flex items-center gap-3 flex-shrink-0">
               <button
                 onClick={toggleAvailability}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all shadow-sm ${
-                  advisor.busy
-                    ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700"
-                    : "bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600"
-                }`}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all shadow-sm ${advisor.busy
+                  ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700"
+                  : "bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600"
+                  }`}
               >
                 {advisor.busy ? (
                   <>
@@ -567,11 +583,11 @@ export default function AdvisorDashboard() {
                         <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-semibold text-lg shadow-md flex-shrink-0">
                           {request.user?.name
                             ? String(request.user.name)
-                                .split(" ")
-                                .map((p) => (p && p[0] ? p[0] : ""))
-                                .slice(0, 2)
-                                .join("")
-                                .toUpperCase()
+                              .split(" ")
+                              .map((p) => (p && p[0] ? p[0] : ""))
+                              .slice(0, 2)
+                              .join("")
+                              .toUpperCase()
                             : "?"}
                         </div>
 
@@ -589,24 +605,24 @@ export default function AdvisorDashboard() {
                           <div className="flex items-center gap-4 mt-1.5 text-sm text-slate-500 flex-wrap">
                             {(request.user?.phone ||
                               request.user?.phoneNumber) && (
-                              <span className="flex items-center gap-1">
-                                <svg
-                                  className="w-3.5 h-3.5"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  viewBox="0 0 24 24"
-                                >
-                                  <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                                  />
-                                </svg>
-                                {request.user?.phone ||
-                                  request.user?.phoneNumber}
-                              </span>
-                            )}
+                                <span className="flex items-center gap-1">
+                                  <svg
+                                    className="w-3.5 h-3.5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                                    />
+                                  </svg>
+                                  {request.user?.phone ||
+                                    request.user?.phoneNumber}
+                                </span>
+                              )}
                             {request.user?.email && (
                               <span className="flex items-center gap-1 truncate">
                                 <svg
@@ -645,7 +661,7 @@ export default function AdvisorDashboard() {
                                 />
                               </svg>
                               {request.payment?.method === "wallet" ||
-                              request.paymentMethod === "wallet"
+                                request.paymentMethod === "wallet"
                                 ? "Wallet"
                                 : "Razorpay"}
                             </span>
@@ -698,6 +714,7 @@ export default function AdvisorDashboard() {
                 ))}
               </div>
             )}
+            <VideoChatRequests videoChatRequests={videoChatRequest} endSession={endSession} />
           </div>
         </div>
       </div>
