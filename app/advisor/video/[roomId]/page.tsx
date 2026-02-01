@@ -5,12 +5,14 @@ import { useVideoRoom } from "@/hooks/useVideoRoom";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth, functions } from "@/lib/firebase";
 import { httpsCallable } from "firebase/functions";
+import AIChatPanel from "@/components/AIChatPanel";
 
 export default function VideoCallPage() {
     const router = useRouter();
     const { roomId } = useParams() as { roomId: string };
     const [authReady, setAuthReady] = useState(false);
     const [hasJoined, setHasJoined] = useState(false);
+    const [isChatCollapsed, setIsChatCollapsed] = useState(false);
 
     const {
         joinRoom,
@@ -107,9 +109,10 @@ export default function VideoCallPage() {
     }
 
     return (
-        <div className="flex flex-col gap-6 p-6 max-w-6xl mx-auto min-h-screen">
+        <>
+        <div className={`flex flex-col gap-4 sm:gap-6 p-4 sm:p-6 max-w-6xl mx-auto min-h-screen transition-all duration-300 ${isChatCollapsed ? '' : 'lg:pr-[420px]'}`}>
             <div className="text-center">
-                <h2 className="text-3xl font-bold mb-2">Room: {roomId}</h2>
+                <h2 className="text-2xl sm:text-3xl font-bold mb-2">Room: {roomId}</h2>
                 <p className="text-gray-600">
                     Status:{" "}
                     <span className={`px-3 py-1 rounded font-semibold ${getStatusColor()}`}>
@@ -124,11 +127,11 @@ export default function VideoCallPage() {
                 </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 flex-1">
                 <div className="flex flex-col gap-2 bg-gray-100 rounded-lg overflow-hidden relative">
-                    <h3 className="text-lg font-semibold px-4 py-3 bg-gray-200">You</h3>
+                    <h3 className="text-base sm:text-lg font-semibold px-3 sm:px-4 py-2 sm:py-3 bg-gray-200">You</h3>
                     <div
-                        className="relative flex-1 min-h-80 bg-black flex items-center justify-center overflow-hidden"
+                        className="relative flex-1 min-h-60 sm:min-h-80 bg-black flex items-center justify-center overflow-hidden"
                         ref={localVideoRef}
                         suppressHydrationWarning
                     />
@@ -143,11 +146,11 @@ export default function VideoCallPage() {
                 </div>
 
                 <div className="flex flex-col gap-2 bg-gray-100 rounded-lg overflow-hidden relative">
-                    <h3 className="text-lg font-semibold px-4 py-3 bg-gray-200">
+                    <h3 className="text-base sm:text-lg font-semibold px-3 sm:px-4 py-2 sm:py-3 bg-gray-200">
                         Other Person
                     </h3>
                     <div
-                        className="relative flex-1 min-h-80 bg-black flex items-center justify-center overflow-hidden"
+                        className="relative flex-1 min-h-60 sm:min-h-80 bg-black flex items-center justify-center overflow-hidden"
                         ref={remoteVideoRef}
                         suppressHydrationWarning
                     />
@@ -161,35 +164,42 @@ export default function VideoCallPage() {
                 </div>
             </div>
 
-            <div className="flex gap-3 justify-center flex-wrap">
+            <div className="flex gap-2 sm:gap-3 justify-center flex-wrap">
                 <button
                     onClick={toggleCamera}
                     disabled={connecting}
-                    className={`px-6 py-3 rounded-lg font-semibold transition transform hover:scale-105 disabled:opacity-60 disabled:cursor-not-allowed ${cameraEnabled
+                    className={`px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-semibold transition transform hover:scale-105 disabled:opacity-60 disabled:cursor-not-allowed text-sm sm:text-base ${cameraEnabled
                         ? "bg-green-500 hover:bg-green-600 text-white"
                         : "bg-red-500 hover:bg-red-600 text-white"
                         }`}
                 >
-                    {cameraEnabled ? "📹 Camera On" : "📹 Camera Off"}
+                    <span className="hidden sm:inline">{cameraEnabled ? "📹 Camera On" : "📹 Camera Off"}</span>
+                    <span className="sm:hidden">{cameraEnabled ? "📹" : "📹✕"}</span>
                 </button>
                 <button
                     onClick={toggleMic}
                     disabled={connecting}
-                    className={`px-6 py-3 rounded-lg font-semibold transition transform hover:scale-105 disabled:opacity-60 disabled:cursor-not-allowed ${micEnabled
+                    className={`px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-semibold transition transform hover:scale-105 disabled:opacity-60 disabled:cursor-not-allowed text-sm sm:text-base ${micEnabled
                         ? "bg-green-500 hover:bg-green-600 text-white"
                         : "bg-red-500 hover:bg-red-600 text-white"
                         }`}
                 >
-                    {micEnabled ? "🎤 Unmuted" : "🎤 Muted"}
+                    <span className="hidden sm:inline">{micEnabled ? "🎤 Unmuted" : "🎤 Muted"}</span>
+                    <span className="sm:hidden">{micEnabled ? "🎤" : "🎤✕"}</span>
                 </button>
                 <button
                     onClick={handleLeave}
                     disabled={connecting}
-                    className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition transform hover:scale-105 disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="px-4 sm:px-6 py-2 sm:py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition transform hover:scale-105 disabled:opacity-60 disabled:cursor-not-allowed text-sm sm:text-base"
                 >
-                    🚪 Leave Call
+                    <span className="hidden sm:inline">🚪 Leave Call</span>
+                    <span className="sm:hidden">🚪</span>
                 </button>
             </div>
         </div>
+
+        {/* AI Chat Sidebar */}
+        <AIChatPanel isCollapsed={isChatCollapsed} onToggleCollapse={() => setIsChatCollapsed(!isChatCollapsed)} />
+        </>
     );
 }
