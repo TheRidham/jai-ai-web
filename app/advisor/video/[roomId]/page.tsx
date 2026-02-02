@@ -199,7 +199,12 @@ export default function VideoCallPage() {
         </div>
 
         {/* AI Chat Sidebar */}
-        <AIChatPanel isCollapsed={isChatCollapsed} onToggleCollapse={() => setIsChatCollapsed(!isChatCollapsed)} />
+        <AIChatPanel
+            isCollapsed={isChatCollapsed}
+            onToggleCollapse={() => setIsChatCollapsed(!isChatCollapsed)}
+            videoMicEnabled={micEnabled}
+            onToggleVideoMic={toggleMic}
+        />
         </>
     );
 }

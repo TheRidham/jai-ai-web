@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Send, Loader2, X, MessageCircle, Sparkles } from "lucide-react";
 import { useAIChat } from "@/hooks/useAIChat";
+import VoiceInput from "@/components/VoiceInput";
 import { marked } from "marked";
 
 // Configure marked
@@ -14,10 +15,20 @@ marked.setOptions({
 interface AIChatPanelProps {
   isCollapsed: boolean;
   onToggleCollapse: () => void;
+  // Smart mic management for video call
+  videoMicEnabled?: boolean;
+  onToggleVideoMic?: () => void;
 }
 
-export default function AIChatPanel({ isCollapsed, onToggleCollapse }: AIChatPanelProps) {
+export default function AIChatPanel({
+  isCollapsed,
+  onToggleCollapse,
+  videoMicEnabled,
+  onToggleVideoMic,
+}: AIChatPanelProps) {
   const [input, setInput] = useState("");
+  const [originalVideoMicState, setOriginalVideoMicState] = useState<boolean | null>(null);
+  const [isVoiceUIVisible, setIsVoiceUIVisible] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const { messages, isLoading, isStreaming, sendMessageStream, clearMessages } = useAIChat();
@@ -41,6 +52,35 @@ export default function AIChatPanel({ isCollapsed, onToggleCollapse }: AIChatPan
       e.preventDefault();
       handleSend();
     }
+  };
+
+  // Smart mic: mute video mic when voice recording starts
+  const handleRecordingStart = () => {
+    if (videoMicEnabled !== undefined && onToggleVideoMic) {
+      setOriginalVideoMicState(videoMicEnabled);
+      if (videoMicEnabled) {
+        onToggleVideoMic(); // Mute video mic
+      }
+    }
+  };
+
+  // Smart mic: restore video mic state when recording stops
+  const handleRecordingStop = () => {
+    if (originalVideoMicState !== null && onToggleVideoMic) {
+      if (originalVideoMicState && !videoMicEnabled) {
+        onToggleVideoMic(); // Unmute if it was originally on
+      }
+      setOriginalVideoMicState(null);
+    }
+  };
+
+  // Handle transcribed text from voice input
+  const handleTranscriptReady = (text: string) => {
+    setInput(text);
+    // Auto-send after transcription
+    setTimeout(() => {
+      sendMessageStream(text);
+    }, 100);
   };
 
   if (isCollapsed) {
@@ -128,23 +168,39 @@ export default function AIChatPanel({ isCollapsed, onToggleCollapse }: AIChatPan
 
       {/* Input Area */}
       <div className="px-4 py-3 border-t border-gray-200">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyPress}
-            placeholder="Ask something..."
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
+        <div className="flex gap-2 items-center">
+          {/* Always render VoiceInput to maintain state */}
+          <VoiceInput
+            onTranscriptReady={handleTranscriptReady}
             disabled={isLoading || isStreaming}
+            onRecordingStart={handleRecordingStart}
+            onRecordingStop={handleRecordingStop}
+            onUIStateChange={setIsVoiceUIVisible}
           />
-          <button
-            onClick={handleSend}
-            disabled={isLoading || isStreaming || !input.trim()}
-            className="p-2 bg-emerald-500 text-white rounded-full hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Send size={20} />
-          </button>
+
+          {/* Hide text input when voice UI is visible */}
+          {!isVoiceUIVisible && (
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyPress}
+              placeholder="Ask something..."
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
+              disabled={isLoading || isStreaming}
+            />
+          )}
+
+          {/* Send button - show when input has text and voice UI not visible */}
+          {input.trim() && !isVoiceUIVisible && (
+            <button
+              onClick={handleSend}
+              disabled={isLoading || isStreaming}
+              className="p-2 bg-emerald-500 text-white rounded-full hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Send size={20} />
+            </button>
+          )}
         </div>
       </div>
     </div>
