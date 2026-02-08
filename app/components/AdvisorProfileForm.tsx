@@ -47,14 +47,16 @@ export interface AdvisorFormValues {
   name: string;
   age: string;
   experience: string;
-  degree: string;
+  degree: string[];
   specialization: string[];
-  certification: string;
+  certification: string[];
   email: string;
   phone: string;
   password: string;
   confirmPassword: string;
   profilePhoto: string;
+  location: string;
+  about: string;
 }
 
 export interface AdvisorFormSubmitPayload extends AdvisorFormValues {
@@ -96,6 +98,14 @@ const createInitialValues = (
     ? initial!.specialization.filter((item): item is string => typeof item === "string")
     : [];
 
+  const degree = Array.isArray(initial?.degree)
+    ? initial!.degree.filter((item): item is string => typeof item === "string")
+    : [];
+
+  const certification = Array.isArray(initial?.certification)
+    ? initial!.certification.filter((item): item is string => typeof item === "string")
+    : [];
+
   const password = typeof initial?.password === "string" ? initial.password : "";
   const confirmPassword =
     typeof initial?.confirmPassword === "string"
@@ -106,16 +116,17 @@ const createInitialValues = (
     name: typeof initial?.name === "string" ? initial.name : "",
     age: toStringValue(initial?.age),
     experience: toStringValue(initial?.experience),
-    degree: typeof initial?.degree === "string" ? initial.degree : "",
+    degree,
     specialization,
-    certification:
-      typeof initial?.certification === "string" ? initial.certification : "",
+    certification,
     email: typeof initial?.email === "string" ? initial.email : "",
     phone: toStringValue(initial?.phone),
     password,
     confirmPassword,
     profilePhoto:
       typeof initial?.profilePhoto === "string" ? initial.profilePhoto : "",
+    location: typeof initial?.location === "string" ? initial.location : "",
+    about: typeof initial?.about === "string" ? initial.about : "",
   };
 };
 
@@ -143,6 +154,8 @@ export default function AdvisorProfileForm({
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [showSpecializationDropdown, setShowSpecializationDropdown] =
     useState(false);
+  const [newDegree, setNewDegree] = useState<string>("");
+  const [newCertification, setNewCertification] = useState<string>("");
   const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -205,6 +218,42 @@ export default function AdvisorProfileForm({
     });
   };
 
+  const handleAddDegree = () => {
+    const trimmedDegree = newDegree.trim();
+    if (trimmedDegree && !formValues.degree.includes(trimmedDegree)) {
+      setFormValues((prev) => ({
+        ...prev,
+        degree: [...prev.degree, trimmedDegree],
+      }));
+      setNewDegree("");
+    }
+  };
+
+  const handleRemoveDegree = (index: number) => {
+    setFormValues((prev) => ({
+      ...prev,
+      degree: prev.degree.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleAddCertification = () => {
+    const trimmedCert = newCertification.trim();
+    if (trimmedCert && !formValues.certification.includes(trimmedCert)) {
+      setFormValues((prev) => ({
+        ...prev,
+        certification: [...prev.certification, trimmedCert],
+      }));
+      setNewCertification("");
+    }
+  };
+
+  const handleRemoveCertification = (index: number) => {
+    setFormValues((prev) => ({
+      ...prev,
+      certification: prev.certification.filter((_, i) => i !== index),
+    }));
+  };
+
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) {
@@ -229,14 +278,16 @@ export default function AdvisorProfileForm({
       name: formValues.name.trim(),
       age: formValues.age.trim(),
       experience: formValues.experience.trim(),
-      degree: formValues.degree.trim(),
+      degree: formValues.degree.map((d) => d.trim()).filter(d => d),
       specialization: [...formValues.specialization],
-      certification: formValues.certification.trim(),
+      certification: formValues.certification.map((c) => c.trim()).filter(c => c),
       email: formValues.email.trim(),
       phone: formValues.phone.trim(),
       password: formValues.password,
       confirmPassword: formValues.confirmPassword,
       profilePhoto: formValues.profilePhoto.trim(),
+      location: formValues.location.trim(),
+      about: formValues.about.trim(),
     };
 
     await onSubmit({ ...sanitizedValues, photoFile });
@@ -348,17 +399,54 @@ export default function AdvisorProfileForm({
         <div className="group">
           <label className="flex items-center gap-2 text-blue-500 text-lg font-medium mb-2">
             <Award size={20} />
-            Degree
+            Degrees
           </label>
-          <input
-            name="degree"
-            placeholder="e.g., MBBS, MSc Nutrition, BPharm"
-            value={formValues.degree}
-            onChange={handleChange}
-            className="w-full bg-blue-300/10 backdrop-blur-sm border border-blue-500/10 rounded-xl p-3 text-black placeholder-gray-400 outline-none focus:bg-white/10 focus:border-blue-500/50 transition-all duration-200"
-            required
-            disabled={loading}
-          />
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="e.g., MBBS, MSc Nutrition, BPharm"
+                value={newDegree}
+                onChange={(e) => setNewDegree(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddDegree();
+                  }
+                }}
+                className="flex-1 bg-blue-300/10 backdrop-blur-sm border border-blue-500/10 rounded-xl p-3 text-black placeholder-gray-400 outline-none focus:bg-white/10 focus:border-blue-500/50 transition-all duration-200"
+                disabled={loading}
+              />
+              <button
+                type="button"
+                onClick={handleAddDegree}
+                className="px-4 py-3 bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-600 transition disabled:opacity-50"
+                disabled={loading || !newDegree.trim()}
+              >
+                Add
+              </button>
+            </div>
+            {formValues.degree.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {formValues.degree.map((deg, index) => (
+                  <span
+                    key={index}
+                    className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full"
+                  >
+                    {deg}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveDegree(index)}
+                      className="ml-2 text-blue-500 hover:text-blue-700 font-bold"
+                      disabled={loading}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="group relative" ref={dropdownRef}>
@@ -440,17 +528,54 @@ export default function AdvisorProfileForm({
         <div className="group">
           <label className="flex items-center gap-2 text-blue-500 text-lg font-medium mb-2">
             <Award size={20} />
-            Certification
+            Certifications
           </label>
-          <input
-            name="certification"
-            placeholder="e.g., Certified Nutritionist, Licensed Therapist"
-            value={formValues.certification}
-            onChange={handleChange}
-            className="w-full bg-blue-300/10 backdrop-blur-sm border border-blue-500/10 rounded-xl p-3 text-black placeholder-gray-400 outline-none focus:bg-white/10 focus:border-blue-500/50 transition-all duration-200"
-            required
-            disabled={loading}
-          />
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="e.g., Certified Nutritionist, Licensed Therapist"
+                value={newCertification}
+                onChange={(e) => setNewCertification(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddCertification();
+                  }
+                }}
+                className="flex-1 bg-blue-300/10 backdrop-blur-sm border border-blue-500/10 rounded-xl p-3 text-black placeholder-gray-400 outline-none focus:bg-white/10 focus:border-blue-500/50 transition-all duration-200"
+                disabled={loading}
+              />
+              <button
+                type="button"
+                onClick={handleAddCertification}
+                className="px-4 py-3 bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-600 transition disabled:opacity-50"
+                disabled={loading || !newCertification.trim()}
+              >
+                Add
+              </button>
+            </div>
+            {formValues.certification.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {formValues.certification.map((cert, index) => (
+                  <span
+                    key={index}
+                    className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full"
+                  >
+                    {cert}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveCertification(index)}
+                      className="ml-2 text-blue-500 hover:text-blue-700 font-bold"
+                      disabled={loading}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="group">
@@ -488,6 +613,41 @@ export default function AdvisorProfileForm({
           <p className="text-xs text-gray-500 mt-1">
             Include country code (e.g., +1 for US, +91 for India)
           </p>
+        </div>
+
+        <div className="group">
+          <label className="flex items-center gap-2 text-blue-500 text-lg font-medium mb-2">
+            <Briefcase size={20} />
+            Location
+          </label>
+          <input
+            name="location"
+            type="text"
+            placeholder="e.g., New York, USA"
+            value={formValues.location}
+            onChange={handleChange}
+            className="w-full bg-blue-300/10 backdrop-blur-sm border border-blue-500/10 rounded-xl p-3 text-black placeholder-gray-400 outline-none focus:bg-white/10 focus:border-blue-500/50 transition-all duration-200"
+            required
+            disabled={loading}
+          />
+        </div>
+
+        <div className="group">
+          <label className="flex items-center gap-2 text-blue-500 text-lg font-medium mb-2">
+            <Sparkles size={20} />
+            About
+          </label>
+          <textarea
+            name="about"
+            placeholder="Tell us about your expertise and experience..."
+            value={formValues.about}
+            onChange={(e) =>
+              setFormValues((prev) => ({ ...prev, about: e.target.value }))
+            }
+            className="w-full bg-blue-300/10 backdrop-blur-sm border border-blue-500/10 rounded-xl p-3 text-black placeholder-gray-400 outline-none focus:bg-white/10 focus:border-blue-500/50 transition-all duration-200 resize-none h-24"
+            required
+            disabled={loading}
+          />
         </div>
 
         <div className="group">

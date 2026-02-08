@@ -51,6 +51,42 @@ export default function SignUpForm() {
         return;
       }
 
+      if (values.degree.length === 0) {
+        setFeedback({
+          text: "Please add at least one degree.",
+          variant: "error",
+        });
+        setLoading(false);
+        return;
+      }
+
+      if (values.certification.length === 0) {
+        setFeedback({
+          text: "Please add at least one certification.",
+          variant: "error",
+        });
+        setLoading(false);
+        return;
+      }
+
+      if (values.location.trim().length === 0) {
+        setFeedback({
+          text: "Please enter your location.",
+          variant: "error",
+        });
+        setLoading(false);
+        return;
+      }
+
+      if (values.about.trim().length === 0) {
+        setFeedback({
+          text: "Please tell us about yourself.",
+          variant: "error",
+        });
+        setLoading(false);
+        return;
+      }
+
       let formattedPhone = values.phone;
       if (formattedPhone && !formattedPhone.startsWith("+")) {
         formattedPhone = `+${formattedPhone}`;
@@ -74,16 +110,18 @@ export default function SignUpForm() {
 
       await addDoc(collection(db, "advisors"), {
         uid: userCredential.user.uid,
-        name: values.name.trim().replace(/\s+/g, " ").toLowerCase(),
+        name: values.name.trim().replace(/\s+/g, " "),
         age: values.age,
         experience: values.experience,
         degree: values.degree,
         specialization: values.specialization,
-        certification: values.certification.trim(),
+        certification: values.certification,
         email: values.email.trim(),
         phone: formattedPhone,
         profilePhoto: photoURL,
         password: values.password,
+        location: values.location,
+        about: values.about,
         busy: false,
         isActive: true,
         totalUsersAttended: 0,
