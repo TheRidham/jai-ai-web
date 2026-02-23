@@ -21,23 +21,23 @@ import PieChartWithCustomizedLabel from "@/app/components/PieChart";
 const CATEGORY_COLORS: Record<string, string> = {
   "Nutrition & Diet": "#FF4136", // Bright Red
   "Mental Health": "#0074D9", // Royal Blue
-//  Lawyer: "#2ECC40", // Lime Green
+  Lawyer: "#2ECC40", // Lime Green
   "Sexual Health": "#FF851B", // Orange
   relationships: "#B10DC9", // Purple
   "General Medicine": "#39CCCC", // Teal
   Relationship: "#F012BE", // Magenta
   Fitness: "#01FF70", // Neon Green
-//  "Career Coach": "#FFD700", // Gold
-//  Astro: "#7B68EE", // Medium Slate Blue
-//  Government: "#8B4513", // Saddle Brown
+ "Career Coach": "#FFD700", // Gold
+ Astro: "#7B68EE", // Medium Slate Blue
+  Government: "#8B4513", // Saddle Brown
   "Skin & Beauty": "#FF1493", // Deep Pink
   Addiction: "#20B2AA", // Light Sea Green
   "sexual health": "#DC143C", // Crimson
-//  "CA Taxes": "#4B0082", // Indigo
+  "CA Taxes": "#4B0082", // Indigo
   addictions: "#FF6347", // Tomato
   "skin & beauty": "#BA55D3", // Medium Orchid
-//  Shopping: "#00CED1", // Dark Turquoise
- // Finance: "#32CD32", // Lime
+ Shopping: "#00CED1", // Dark Turquoise
+  Finance: "#32CD32", // Lime
 };
 
 export interface UserChatStats {
