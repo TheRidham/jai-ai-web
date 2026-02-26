@@ -4,6 +4,7 @@ import {
     RemoteParticipant,
     RemoteTrack,
     Track,
+    LocalAudioTrack,
 } from "twilio-video";
 import { useLayoutEffect, useRef, useState, useCallback } from "react";
 import { httpsCallable } from "firebase/functions";
@@ -33,6 +34,7 @@ export function useVideoRoom(options: UseVideoRoomOptions = {}) {
     const localTracksRef = useRef<HTMLMediaElement[]>([]);
     const remoteTracksRef = useRef<HTMLMediaElement[]>([]);
     const joinInProgressRef = useRef(false);
+    const localAudioTrackRef = useRef<LocalAudioTrack | null>(null);
 
     const cleanupTracks = useCallback(() => {
         // Must clear innerHTML FIRST before React tries to unmount
@@ -183,6 +185,13 @@ export function useVideoRoom(options: UseVideoRoomOptions = {}) {
                     audio: { echoCancellation: true },
                     video: { width: 640, height: 480 },
                     networkQuality: { local: 2, remote: 2 },
+                });
+
+                // Store reference to local audio track
+                joinedRoom.localParticipant.audioTracks.forEach((pub) => {
+                    if (pub.track.kind === 'audio') {
+                        localAudioTrackRef.current = pub.track as LocalAudioTrack;
+                    }
                 });
 
                 roomRef.current = joinedRoom;
@@ -350,5 +359,7 @@ export function useVideoRoom(options: UseVideoRoomOptions = {}) {
         participants,
         error,
         roomId,
+        roomRef,
+        localAudioTrackRef,
     };
 }

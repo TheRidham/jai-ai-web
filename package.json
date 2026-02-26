@@ -9,6 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@elevenlabs/client": "^0.14.0",
+    "@elevenlabs/elevenlabs-js": "^2.36.0",
     "firebase": "^12.3.0",
     "lucide-react": "^0.548.0",
     "marked": "^17.0.1",
