@@ -96,16 +96,19 @@ export default function VideoCallPage() {
         if (voiceTransformEnabled) {
             stopVoiceTransform();
             
-            // Unpublish transformed track and republish original
+            // Unpublish transformed track
             if (roomRef.current) {
                 roomRef.current.localParticipant.audioTracks.forEach((pub) => {
-                    roomRef.current?.localParticipant.unpublishTrack(pub.track);
+                    if (pub.track.name === "transformed-audio") {
+                        roomRef.current?.localParticipant.unpublishTrack(pub.track);
+                        console.log("[VOICE] Unpublished transformed track");
+                    }
                 });
 
-                // Re-publish original mic audio
+                // Unmute the original audio track
                 if (localAudioTrackRef.current) {
-                    roomRef.current.localParticipant.publishTrack(localAudioTrackRef.current);
-                    console.log("[VOICE] Republished original track to Twilio");
+                    localAudioTrackRef.current.enable(true);
+                    console.log("[VOICE] Unmuted original track");
                 }
             }
             setVoiceTransformEnabled(false);
@@ -133,6 +136,13 @@ export default function VideoCallPage() {
                 const transformedTrack = new LocalAudioTrack(audioTrack, { name: "transformed-audio" });
                 roomRef.current.localParticipant.publishTrack(transformedTrack);
                 setTransformedTrackPublished(true);
+                
+                // Mute the original audio track
+                if (localAudioTrackRef.current) {
+                    localAudioTrackRef.current.enable(false);
+                    console.log("[VOICE] Muted original track");
+                }
+                
                 console.log("[VOICE] Published transformed track to Twilio");
             }
         }
@@ -141,7 +151,7 @@ export default function VideoCallPage() {
         if (!voiceTransformEnabled) {
             setTransformedTrackPublished(false);
         }
-    }, [voiceTransformEnabled, transformedStream, roomRef, transformedTrackPublished]);
+    }, [voiceTransformEnabled, transformedStream, roomRef, transformedTrackPublished, localAudioTrackRef]);
 
     const handlePreset = (preset: "natural" | "expressive" | "fast" | "serious") => {
         switch (preset) {

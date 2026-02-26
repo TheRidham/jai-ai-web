@@ -140,7 +140,7 @@ export default function Analysis() {
                 collection(db, `chatRooms/${data.roomId}/messages`)
               );
               messageCount += messagesSnapshot.size;
-            } catch (e) {
+            } catch {
               // ignore errors for missing rooms
             }
           }

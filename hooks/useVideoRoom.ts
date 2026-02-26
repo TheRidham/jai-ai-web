@@ -209,6 +209,13 @@ export function useVideoRoom(options: UseVideoRoomOptions = {}) {
                     }
                 });
 
+                // Store reference to local audio track
+                joinedRoom.localParticipant.audioTracks.forEach((pub) => {
+                    if (pub.track.kind === 'audio') {
+                        localAudioTrackRef.current = pub.track as LocalAudioTrack;
+                    }
+                });
+
                 const attachTrack = (track: Track | RemoteTrack) => {
                     if (remoteVideoRef.current && "attach" in track) {
                         const mediaElement = track.attach();

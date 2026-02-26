@@ -4,7 +4,6 @@ import {
   PieChart,
   PieLabelRenderProps,
   Tooltip,
-  Legend,
   ResponsiveContainer,
 } from "recharts";
 
@@ -52,7 +51,6 @@ const renderCustomizedLabel = ({
   cx,
   cy,
   midAngle,
-  innerRadius,
   outerRadius,
   percent,
 }: PieLabelRenderProps) => {

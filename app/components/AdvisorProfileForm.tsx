@@ -162,10 +162,6 @@ export default function AdvisorProfileForm({
     setFormValues(createInitialValues(initialValues));
     setPhotoFile(null);
     setPreview(initialValues?.profilePhoto ?? null);
-    if (objectUrl) {
-      URL.revokeObjectURL(objectUrl);
-      setObjectUrl(null);
-    }
   }, [initialValues]);
 
   useEffect(() => {
