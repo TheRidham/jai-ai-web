@@ -33,6 +33,7 @@ export default function VideoCallPage() {
         remoteVideoRef,
         toggleCamera,
         toggleMic,
+        forceSetMicEnabled,
         cameraEnabled,
         micEnabled,
         status,
@@ -105,12 +106,13 @@ export default function VideoCallPage() {
                     }
                 });
 
-                // Unmute the original audio track
+                // Unmute the original audio track and update UI
                 if (localAudioTrackRef.current) {
                     localAudioTrackRef.current.enable(true);
                     console.log("[VOICE] Unmuted original track");
                 }
             }
+            forceSetMicEnabled(true);
             setVoiceTransformEnabled(false);
             setTransformedTrackPublished(false);
         } else {
@@ -120,7 +122,7 @@ export default function VideoCallPage() {
                 setVoiceTransformEnabled(true);
             }
         }
-    }, [voiceTransformEnabled, status, startVoiceTransform, stopVoiceTransform, roomRef, localAudioTrackRef]);
+    }, [voiceTransformEnabled, status, startVoiceTransform, stopVoiceTransform, roomRef, localAudioTrackRef, forceSetMicEnabled]);
 
     useEffect(() => {
         return () => {

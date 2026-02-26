@@ -345,6 +345,14 @@ export function useVideoRoom(options: UseVideoRoomOptions = {}) {
         setMicEnabled(newState);
     }, [micEnabled]);
 
+    const forceSetMicEnabled = useCallback((enabled: boolean): void => {
+        if (!roomRef.current) return;
+        roomRef.current.localParticipant.audioTracks.forEach((pub) => {
+            pub.track.enable(enabled);
+        });
+        setMicEnabled(enabled);
+    }, []);
+
     useLayoutEffect(() => {
         return () => {
             disconnectRoom();
@@ -361,6 +369,7 @@ export function useVideoRoom(options: UseVideoRoomOptions = {}) {
         micEnabled,
         toggleCamera,
         toggleMic,
+        forceSetMicEnabled,
         localVideoRef,
         remoteVideoRef,
         participants,
