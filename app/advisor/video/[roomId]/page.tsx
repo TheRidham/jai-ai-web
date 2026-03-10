@@ -22,6 +22,7 @@ export default function VideoCallPage() {
     const [stability, setStability] = useState<number>(0.5);
     const [similarityBoost, setSimilarityBoost] = useState<number>(0.75);
     const [speed, setSpeed] = useState<number>(1.0);
+    const [commitWordLimit, setCommitWordLimit] = useState<number>(20);
     const [voiceTransformEnabled, setVoiceTransformEnabled] = useState(false);
     const [showSettings, setShowSettings] = useState(false);
     const [transformedTrackPublished, setTransformedTrackPublished] = useState(false);
@@ -62,7 +63,7 @@ export default function VideoCallPage() {
             voiceId: selectedVoice || undefined,
             voiceSettings,
         },
-        { autoPlay: true }
+        { autoPlay: true, maxWordsBeforeCommit: commitWordLimit }
     );
 
     useEffect(() => {
@@ -493,6 +494,26 @@ export default function VideoCallPage() {
                                     <div className="flex justify-between text-xs text-gray-400 mt-1">
                                         <span>Slow</span>
                                         <span>Fast</span>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                                        Auto-Commit Word Limit: {commitWordLimit} words
+                                    </label>
+                                    <input
+                                        type="range"
+                                        min="1"
+                                        max="30"
+                                        step="1"
+                                        value={commitWordLimit}
+                                        onChange={(e) => setCommitWordLimit(parseInt(e.target.value))}
+                                        disabled={voiceTransformEnabled}
+                                        className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer disabled:opacity-50"
+                                    />
+                                    <div className="flex justify-between text-xs text-gray-400 mt-1">
+                                        <span>1</span>
+                                        <span>30</span>
                                     </div>
                                 </div>
 

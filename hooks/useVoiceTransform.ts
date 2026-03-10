@@ -10,7 +10,7 @@ import type {
   UseVoiceTransformOptions,
 } from "@/types/voice-transform";
 
-const COMMIT_CONFIG = {
+const DEFAULT_COMMIT_CONFIG = {
   silenceAfterPunctuationMs: 400,
   maxSilenceMs: 2500,
   maxWordsBeforeCommit: 20,
@@ -45,6 +45,11 @@ export function useVoiceTransform(
     error: null as string | null,
   });
   const [transformedStream, setTransformedStream] = useState<MediaStream | null>(null);
+
+  const commitConfig = {
+    ...DEFAULT_COMMIT_CONFIG,
+    maxWordsBeforeCommit: options?.maxWordsBeforeCommit ?? DEFAULT_COMMIT_CONFIG.maxWordsBeforeCommit,
+  };
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -136,8 +141,8 @@ export function useVoiceTransform(
     const trimmed = text.trim();
     if (trimmed.length === 0) return false;
     const lastChar = trimmed[trimmed.length - 1];
-    return COMMIT_CONFIG.punctuationMarks.includes(lastChar);
-  }, []);
+    return commitConfig.punctuationMarks.includes(lastChar);
+  }, [commitConfig]);
 
   const getWordCount = useCallback((text: string): number => {
     return text.trim().split(/\s+/).filter((w) => w.length > 0).length;
@@ -153,23 +158,23 @@ export function useVoiceTransform(
 
     commitTimerRef.current = setTimeout(() => {
       forceCommit();
-    }, COMMIT_CONFIG.maxSilenceMs);
+    }, commitConfig.maxSilenceMs);
 
     if (endsWithPunctuation(text)) {
       const wordCount = getWordCount(text);
       if (wordCount >= 3) {
         clearCommitTimer();
-        setTimeout(() => forceCommit(), COMMIT_CONFIG.silenceAfterPunctuationMs);
+        setTimeout(() => forceCommit(), commitConfig.silenceAfterPunctuationMs);
         return;
       }
     }
 
-    if (getWordCount(text) >= COMMIT_CONFIG.maxWordsBeforeCommit) {
+    if (getWordCount(text) >= commitConfig.maxWordsBeforeCommit) {
       clearCommitTimer();
       setTimeout(() => forceCommit(), 300);
       return;
     }
-  }, [clearCommitTimer, forceCommit, endsWithPunctuation, getWordCount]);
+  }, [clearCommitTimer, forceCommit, endsWithPunctuation, getWordCount, commitConfig]);
 
   const float32ToPCM16 = useCallback((float32Array: Float32Array): Int16Array => {
     const int16Array = new Int16Array(float32Array.length);

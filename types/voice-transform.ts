@@ -41,6 +41,7 @@ export interface VoiceOption {
 
 export interface UseVoiceTransformOptions {
   autoPlay?: boolean;
+  maxWordsBeforeCommit?: number;
 }
 
 export interface UseVoiceTransformReturn extends VoiceTransformState {
