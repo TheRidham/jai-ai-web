@@ -5,13 +5,13 @@ import { getStorage } from 'firebase/storage';
 import { getFunctions } from 'firebase/functions';
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBI4VvhQggxhaTDeES_iPcxyLfxiIhSd98",
-  authDomain: "jai-ai-30103.firebaseapp.com",
-  projectId: "jai-ai-30103",
-  storageBucket: "jai-ai-30103.firebasestorage.app",
-  messagingSenderId: "504788514550",
-  appId: "1:504788514550:web:a4d832cc7e45eb38215ed7",
-  measurementId: "G-QGP34E8X35"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId:process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
 // Initialize Firebase

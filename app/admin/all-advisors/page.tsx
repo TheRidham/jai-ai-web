@@ -16,6 +16,7 @@ import Image from "next/image";
 import AdvisorProfileForm, {
   AdvisorFormSubmitPayload,
 } from "@/app/components/AdvisorProfileForm";
+import { orderBy, query } from "firebase/firestore";
 
 interface Advisor {
   id: string;
@@ -74,7 +75,13 @@ export default function AllAdvisors() {
       }
     };
 
-    if (authChecked) {
+    
+const testFetch = async () => {
+  const snapshot = await getDocs(collection(db, "reels"));
+  console.log("docs count:", snapshot.size);
+};
+if (authChecked) {
+      testFetch();
       fetchAdvisors();
     }
   }, [authChecked]);
@@ -263,6 +270,12 @@ export default function AllAdvisors() {
           <div className="flex justify-between items-center h-16">
             <h1 className="text-2xl font-bold text-blue-600">Admin Dashboard</h1>
             <div className="flex items-center gap-3">
+              <button
+                onClick={() => router.push("/admin/reels")}
+                className="flex items-center gap-2 px-4 py-2 bg-pink-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+              >
+                Reels
+              </button>
               <button
                 onClick={() => router.push("/admin/analysis")}
                 className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
