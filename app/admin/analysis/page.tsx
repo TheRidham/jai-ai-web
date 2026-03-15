@@ -27,8 +27,8 @@ const CATEGORY_COLORS: Record<string, string> = {
   "General Medicine": "#39CCCC", // Teal
   Relationship: "#F012BE", // Magenta
   Fitness: "#01FF70", // Neon Green
-  "Career Coach": "#FFD700", // Gold
-  Astro: "#7B68EE", // Medium Slate Blue
+ "Career Coach": "#FFD700", // Gold
+ Astro: "#7B68EE", // Medium Slate Blue
   Government: "#8B4513", // Saddle Brown
   "Skin & Beauty": "#FF1493", // Deep Pink
   Addiction: "#20B2AA", // Light Sea Green
@@ -36,7 +36,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   "CA Taxes": "#4B0082", // Indigo
   addictions: "#FF6347", // Tomato
   "skin & beauty": "#BA55D3", // Medium Orchid
-  Shopping: "#00CED1", // Dark Turquoise
+ Shopping: "#00CED1", // Dark Turquoise
   Finance: "#32CD32", // Lime
 };
 
@@ -55,10 +55,21 @@ const normalizeAdvisorName = (name: string): string => {
   const nameMap: Record<string, string> = {
     'sexual health': 'Sexual Health',
     'skin & beauty': 'Skin & Beauty',
+    'skin': 'Skin & Beauty',
     'relationships': 'Relationship',
     'relationship': 'Relationship',
     'addictions': 'Addiction',
     'addiction': 'Addiction',
+    // Merge synonyms / lowercase variants into canonical category names
+    'nutrition': 'Nutrition & Diet',
+    'nutrition & diet': 'Nutrition & Diet',
+    'fitness': 'Fitness',
+    'mental': 'Mental Health',
+    'mental health': 'Mental Health',
+    'chronic': 'Chronic Diseases',
+    'chronic diseases': 'Chronic Diseases',
+    'general': 'General Medicine',
+    'general medicine': 'General Medicine',
   };
   
   return nameMap[normalized] || name;
@@ -129,7 +140,7 @@ export default function Analysis() {
                 collection(db, `chatRooms/${data.roomId}/messages`)
               );
               messageCount += messagesSnapshot.size;
-            } catch (e) {
+            } catch {
               // ignore errors for missing rooms
             }
           }
@@ -371,44 +382,74 @@ export default function Analysis() {
         {/* Overall AI Advisor Chat Stats */}
         {overallAiAdvisorStats &&
           Object.keys(overallAiAdvisorStats).length > 0 && (
-            <div className="mb-8 bg-white shadow-xl p-2 rounded-lg">
-              <h2 className="text-lg font-semibold text-gray-800 mb-2">
-                AI Advisor Chat Stats (All Users)
-              </h2>
-              <div className=" flex gap-4 items-center">
-                <div>
-                  <div className="flex flex-wrap w-xl gap-3">
-                    {Object.entries(overallAiAdvisorStats).map(
-                      ([advisor, count]) => {
-                        const color = CATEGORY_COLORS[advisor] || "#6B7280";
-                        return (
-                          <span
-                            key={advisor}
-                            className="flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium"
-                            style={{
-                              backgroundColor: `${color}20`,
-                              color: color,
-                              border: `1px solid ${color}40`,
-                            }}
-                          >
-                            <span
-                              className="w-2 h-2 rounded-full"
-                              style={{ backgroundColor: color }}
-                            />
-                            <span className="font-medium">{advisor}</span>
-                            <span>({count})</span>
-                          </span>
-                        );
-                      }
-                    )}
+            (() => {
+              // Exclude these categories completely from both the tag list and the pie chart
+              const EXCLUDED = new Set([
+                "finance",
+                "lawyer",
+                "shopping",
+                "career coach",
+                "ca taxes",
+                "government",
+                "astro",
+              ]);
+
+              const filteredOverall = Object.fromEntries(
+                Object.entries(overallAiAdvisorStats).filter(
+                  ([k]) => !EXCLUDED.has(k.toLowerCase())
+                )
+              );
+
+              const filteredTotal = Object.values(filteredOverall).reduce(
+                (s, n) => s + n,
+                0
+              );
+
+              return (
+                <div className="mb-8 bg-white shadow-xl p-2 rounded-lg">
+                  <h2 className="text-lg font-semibold text-gray-800 mb-2">
+                    AI Advisor Chat Stats (All Users)
+                  </h2>
+                  <div className=" flex gap-4 items-center">
+                    <div>
+                      <div className="flex flex-wrap w-xl gap-3">
+                        {Object.entries(filteredOverall).map(
+                          ([advisor, count]) => {
+                            const color = CATEGORY_COLORS[advisor] || "#6B7280";
+                            const percent =
+                              filteredTotal > 0
+                                ? ((count / filteredTotal) * 100).toFixed(1)
+                                : "0.0";
+                            return (
+                              <span
+                                key={advisor}
+                                className="flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium"
+                                style={{
+                                  backgroundColor: `${color}20`,
+                                  color: color,
+                                  border: `1px solid ${color}40`,
+                                }}
+                              >
+                                <span
+                                  className="w-2 h-2 rounded-full"
+                                  style={{ backgroundColor: color }}
+                                />
+                                <span className="font-medium">{advisor}</span>
+                                <span>({percent}%)</span>
+                              </span>
+                            );
+                          }
+                        )}
+                      </div>
+                    </div>
+                    <PieChartWithCustomizedLabel
+                      stats={filteredOverall}
+                      categoryColors={CATEGORY_COLORS}
+                    />
                   </div>
                 </div>
-                <PieChartWithCustomizedLabel
-                  stats={overallAiAdvisorStats}
-                  categoryColors={CATEGORY_COLORS}
-                />
-              </div>
-            </div>
+              );
+            })()
           )}
 
         {/* Users Section Header with Filter */}

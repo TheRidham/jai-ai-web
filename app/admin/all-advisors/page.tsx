@@ -24,11 +24,13 @@ interface Advisor {
   name?: string;
   age?: string | number;
   experience?: string | number;
-  degree?: string;
-  certification?: string;
+  degree?: string[];
+  certification?: string[];
   email?: string;
   phone?: string;
   specialization?: string[];
+  location?: string;
+  about?: string;
   profilePhoto?: string;
   password?: string;
   [key: string]: unknown;
@@ -157,6 +159,38 @@ if (authChecked) {
       return;
     }
 
+    if (payload.degree.length === 0) {
+      setEditFeedback({
+        text: "Please add at least one degree before saving.",
+        variant: "error",
+      });
+      return;
+    }
+
+    if (payload.certification.length === 0) {
+      setEditFeedback({
+        text: "Please add at least one certification before saving.",
+        variant: "error",
+      });
+      return;
+    }
+
+    if (!payload.location.trim()) {
+      setEditFeedback({
+        text: "Please enter a location before saving.",
+        variant: "error",
+      });
+      return;
+    }
+
+    if (!payload.about.trim()) {
+      setEditFeedback({
+        text: "Please provide an about section before saving.",
+        variant: "error",
+      });
+      return;
+    }
+
     const hasPasswordInput = payload.password || payload.confirmPassword;
     if (hasPasswordInput && payload.password !== payload.confirmPassword) {
       setEditFeedback({
@@ -209,6 +243,8 @@ if (authChecked) {
         email: payload.email,
         phone: formattedPhone,
         profilePhoto: profilePhotoUrl,
+        location: payload.location,
+        about: payload.about,
       };
 
       if (passwordToPersist) {
@@ -435,13 +471,21 @@ if (authChecked) {
                 name: toInputString(editingAdvisor.name),
                 age: toInputString(editingAdvisor.age),
                 experience: toInputString(editingAdvisor.experience),
-                degree: toInputString(editingAdvisor.degree),
+                degree: Array.isArray(editingAdvisor.degree)
+                  ? editingAdvisor.degree.filter(
+                      (item): item is string => typeof item === "string"
+                    )
+                  : [],
                 specialization: Array.isArray(editingAdvisor.specialization)
                   ? editingAdvisor.specialization.filter(
                       (item): item is string => typeof item === "string"
                     )
                   : [],
-                certification: toInputString(editingAdvisor.certification),
+                certification: Array.isArray(editingAdvisor.certification)
+                  ? editingAdvisor.certification.filter(
+                      (item): item is string => typeof item === "string"
+                    )
+                  : [],
                 email: toInputString(editingAdvisor.email),
                 phone: toInputString(editingAdvisor.phone),
                 password:
@@ -456,6 +500,8 @@ if (authChecked) {
                   typeof editingAdvisor.profilePhoto === "string"
                     ? editingAdvisor.profilePhoto
                     : "",
+                location: toInputString(editingAdvisor.location),
+                about: toInputString(editingAdvisor.about),
               }}
               onSubmit={handleUpdateAdvisor}
               loading={updating}

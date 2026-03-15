@@ -1,5 +1,4 @@
 import { ChatRequest } from "../advisor/dashboard/page";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 interface Props {
@@ -8,12 +7,6 @@ interface Props {
 }
 
 export default function VideoChatRequests({ videoChatRequests, endSession }: Props) {
-
-    const router = useRouter();
-
-    const handleJoinCall = (roomId: string) => {
-        router.push(`/advisor/video/${roomId}`);
-    }
 
     return (
         <div>

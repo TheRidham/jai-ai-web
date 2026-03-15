@@ -4,6 +4,7 @@ import {
     RemoteParticipant,
     RemoteTrack,
     Track,
+    LocalAudioTrack,
 } from "twilio-video";
 import { useLayoutEffect, useRef, useState, useCallback } from "react";
 import { httpsCallable } from "firebase/functions";
@@ -33,6 +34,7 @@ export function useVideoRoom(options: UseVideoRoomOptions = {}) {
     const localTracksRef = useRef<HTMLMediaElement[]>([]);
     const remoteTracksRef = useRef<HTMLMediaElement[]>([]);
     const joinInProgressRef = useRef(false);
+    const localAudioTrackRef = useRef<LocalAudioTrack | null>(null);
 
     const cleanupTracks = useCallback(() => {
         // Must clear innerHTML FIRST before React tries to unmount
@@ -185,6 +187,13 @@ export function useVideoRoom(options: UseVideoRoomOptions = {}) {
                     networkQuality: { local: 2, remote: 2 },
                 });
 
+                // Store reference to local audio track
+                joinedRoom.localParticipant.audioTracks.forEach((pub) => {
+                    if (pub.track.kind === 'audio') {
+                        localAudioTrackRef.current = pub.track as LocalAudioTrack;
+                    }
+                });
+
                 roomRef.current = joinedRoom;
                 setRoom(joinedRoom);
                 setRoomId(targetRoomId);
@@ -197,6 +206,13 @@ export function useVideoRoom(options: UseVideoRoomOptions = {}) {
                         mediaElement.style.objectFit = "cover";
                         localVideoRef.current.appendChild(mediaElement);
                         localTracksRef.current.push(mediaElement);
+                    }
+                });
+
+                // Store reference to local audio track
+                joinedRoom.localParticipant.audioTracks.forEach((pub) => {
+                    if (pub.track.kind === 'audio') {
+                        localAudioTrackRef.current = pub.track as LocalAudioTrack;
                     }
                 });
 
@@ -329,6 +345,14 @@ export function useVideoRoom(options: UseVideoRoomOptions = {}) {
         setMicEnabled(newState);
     }, [micEnabled]);
 
+    const forceSetMicEnabled = useCallback((enabled: boolean): void => {
+        if (!roomRef.current) return;
+        roomRef.current.localParticipant.audioTracks.forEach((pub) => {
+            pub.track.enable(enabled);
+        });
+        setMicEnabled(enabled);
+    }, []);
+
     useLayoutEffect(() => {
         return () => {
             disconnectRoom();
@@ -345,10 +369,13 @@ export function useVideoRoom(options: UseVideoRoomOptions = {}) {
         micEnabled,
         toggleCamera,
         toggleMic,
+        forceSetMicEnabled,
         localVideoRef,
         remoteVideoRef,
         participants,
         error,
         roomId,
+        roomRef,
+        localAudioTrackRef,
     };
 }
